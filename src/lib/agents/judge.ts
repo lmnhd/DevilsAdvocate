@@ -41,7 +41,7 @@ export class JudgeAgent {
     const { claim, believerArgument, skepticArgument } = input;
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
       const prompt = `${judgeSystemPrompt}
 

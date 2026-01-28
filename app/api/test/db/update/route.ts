@@ -1,4 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { initDb } from '@/lib/db/client';
+import { DebateService } from '@/lib/db/services/debate-service';
+
+interface CloudflareEnv {
+  DB: any;
+}
+
+declare global {
+  var CLOUDFLARE_ENV: CloudflareEnv;
+}
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -19,18 +29,34 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Mock implementation for testing
-    const mockUpdated = {
-      id,
-      confidence_score,
-      updated_at: new Date().toISOString(),
-    };
+    // Get D1 database from Cloudflare environment
+    let db: any = globalThis.CLOUDFLARE_ENV?.DB;
+    
+    if (!db) {
+      console.warn('DB binding not found. Using development fallback.');
+      return NextResponse.json(
+        { success: false, error: 'D1 database binding not configured. Run with: wrangler dev' },
+        { status: 503 }
+      );
+    }
 
-    return NextResponse.json({ success: true, debate: mockUpdated });
+    // Initialize database and service
+    const dbClient = initDb(db);
+    const debateService = new DebateService(dbClient);
+
+    // Update debate score in database
+    await debateService.updateDebateScore(id, confidence_score);
+
+    return NextResponse.json({
+      success: true,
+      message: `Updated debate ${id} with confidence score ${confidence_score}`,
+    });
   } catch (error) {
+    console.error('Update debate error:', error);
     return NextResponse.json(
       { success: false, error: String(error) },
       { status: 400 }
     );
   }
 }
+

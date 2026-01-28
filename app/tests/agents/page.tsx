@@ -1,6 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface DebateState {
   claim: string;
@@ -69,64 +75,94 @@ export default function AgentsTestPage() {
     }
   };
 
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence > 70) return 'text-green-600';
+    if (confidence > 40) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getConfidenceBadgeColor = (confidence: number) => {
+    if (confidence > 70) return 'bg-green-100 text-green-800';
+    if (confidence > 40) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Agent Debate System</h1>
-          <p className="text-gray-600">Three-agent debate with believer, skeptic, and judge</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Agent Debate System</h1>
+          <p className="text-slate-400 text-lg">Three-agent debate with believer, skeptic, and judge</p>
         </div>
 
-        {/* Claim Input */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Select or Enter a Claim</h2>
-          <div className="space-y-3 mb-4">
-            {demoClaims.map((claim, idx) => (
-              <button
-                key={idx}
-                onClick={() => runDebate(claim)}
-                disabled={state.loading}
-                className="w-full text-left p-3 border-2 border-gray-300 rounded hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50 transition"
-              >
-                {idx + 1}. {claim}
-              </button>
-            ))}
-          </div>
+        {/* Claim Input Card */}
+        <Card className="mb-8 border-slate-700 bg-slate-800">
+          <CardHeader>
+            <CardTitle className="text-white">Start a Debate</CardTitle>
+            <CardDescription>Select a demo claim or enter your own to begin</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-200">Demo Claims:</p>
+              <div className="grid gap-2">
+                {demoClaims.map((claim, idx) => (
+                  <Button
+                    key={idx}
+                    onClick={() => runDebate(claim)}
+                    disabled={state.loading}
+                    variant="outline"
+                    className="justify-start text-left h-auto whitespace-normal py-3 px-4 border-slate-600 hover:bg-slate-700"
+                  >
+                    <span className="font-semibold mr-2">{idx + 1}.</span>
+                    <span>{claim}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={state.claim}
-              onChange={(e) => setState((prev) => ({ ...prev, claim: e.target.value }))}
-              placeholder="Or enter your own claim..."
-              className="flex-1 px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={() => runDebate(state.claim)}
-              disabled={!state.claim || state.loading}
-              className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-            >
-              {state.loading ? 'Running...' : 'Debate'}
-            </button>
-          </div>
-        </div>
+            <Separator className="bg-slate-600" />
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-200">Custom Claim:</p>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={state.claim}
+                  onChange={(e) => setState((prev) => ({ ...prev, claim: e.target.value }))}
+                  placeholder="Enter your own claim..."
+                  disabled={state.loading}
+                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-500"
+                />
+                <Button
+                  onClick={() => runDebate(state.claim)}
+                  disabled={!state.claim || state.loading}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {state.loading ? 'Running...' : 'Debate'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Error Display */}
         {state.error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8">
-            <p className="text-red-700 font-semibold">Error</p>
-            <p className="text-red-600">{state.error}</p>
-          </div>
+          <Card className="mb-8 border-red-900 bg-red-950">
+            <CardHeader>
+              <CardTitle className="text-red-200">Error</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-red-200">{state.error}</p>
+            </CardContent>
+          </Card>
         )}
 
         {/* Loading State */}
         {state.loading && (
-          <div className="text-center py-12">
-            <div className="inline-block">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <p className="mt-4 text-gray-600">Running debate...</p>
-            </div>
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="w-12 h-12 border-4 border-slate-600 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+            <p className="text-slate-400 text-lg">Running debate across all agents...</p>
           </div>
         )}
 
@@ -134,85 +170,118 @@ export default function AgentsTestPage() {
         {state.believerArg && !state.loading && (
           <div className="space-y-6">
             {/* Claim Display */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-lg font-semibold mb-2">Debate Claim</h2>
-              <p className="text-gray-800 text-lg">{state.claim}</p>
-            </div>
+            <Card className="border-slate-700 bg-slate-800">
+              <CardHeader>
+                <CardTitle className="text-white">Debate Claim</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-100 text-lg">{state.claim}</p>
+              </CardContent>
+            </Card>
 
-            {/* Arguments Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Believer Argument */}
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div className="bg-green-500 px-6 py-3">
-                  <h3 className="text-white font-bold text-lg">✓ Believer Argument</h3>
-                </div>
-                <div className="p-6">
-                  <p className="text-sm text-gray-500 mb-3">Provider: OpenAI GPT-4</p>
-                  <div className="prose prose-sm max-w-none">
-                    <p className="text-gray-800 whitespace-pre-wrap">{state.believerArg}</p>
-                  </div>
-                </div>
-              </div>
+            {/* Tabs for Arguments */}
+            <Tabs defaultValue="believer" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-slate-700">
+                <TabsTrigger value="believer" className="data-[state=active]:bg-green-600">
+                  ✓ Believer
+                </TabsTrigger>
+                <TabsTrigger value="skeptic" className="data-[state=active]:bg-red-600">
+                  ✗ Skeptic
+                </TabsTrigger>
+                <TabsTrigger value="judge" className="data-[state=active]:bg-indigo-600">
+                  ⚖️ Judge
+                </TabsTrigger>
+              </TabsList>
 
-              {/* Skeptic Argument */}
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div className="bg-red-500 px-6 py-3">
-                  <h3 className="text-white font-bold text-lg">✗ Skeptic Argument</h3>
-                </div>
-                <div className="p-6">
-                  <p className="text-sm text-gray-500 mb-3">Provider: Anthropic Claude</p>
-                  <div className="prose prose-sm max-w-none">
-                    <p className="text-gray-800 whitespace-pre-wrap">{state.skepticArg}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+              {/* Believer Tab */}
+              <TabsContent value="believer" className="mt-4">
+                <Card className="border-slate-700 bg-slate-800">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <span className="text-2xl">✓</span> Believer Argument
+                      </CardTitle>
+                      <Badge className="bg-green-600">OpenAI GPT-4</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-slate-100 whitespace-pre-wrap leading-relaxed">{state.believerArg}</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            {/* Judge Verdict */}
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-              <div className="bg-indigo-600 px-6 py-3">
-                <h3 className="text-white font-bold text-lg">⚖️ Judge Verdict</h3>
-              </div>
-              <div className="p-6">
-                <p className="text-sm text-gray-500 mb-3">Provider: Gemini 2.0 Flash</p>
+              {/* Skeptic Tab */}
+              <TabsContent value="skeptic" className="mt-4">
+                <Card className="border-slate-700 bg-slate-800">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <span className="text-2xl">✗</span> Skeptic Argument
+                      </CardTitle>
+                      <Badge className="bg-red-600">Anthropic Claude</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-slate-100 whitespace-pre-wrap leading-relaxed">{state.skepticArg}</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                {/* Confidence Gauge */}
-                <div className="mb-6">
-                  <div className="flex justify-between mb-2">
-                    <span className="font-semibold">Confidence in Claim</span>
-                    <span className="text-lg font-bold text-blue-600">{state.confidence}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className={`h-3 rounded-full transition-all ${
-                        state.confidence > 70
-                          ? 'bg-green-500'
-                          : state.confidence > 40
-                            ? 'bg-yellow-500'
-                            : 'bg-red-500'
-                      }`}
-                      style={{ width: `${state.confidence}%` }}
-                    ></div>
-                  </div>
-                </div>
+              {/* Judge Tab */}
+              <TabsContent value="judge" className="mt-4">
+                <Card className="border-slate-700 bg-slate-800">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <span className="text-2xl">⚖️</span> Judge Verdict
+                      </CardTitle>
+                      <Badge className="bg-indigo-600">Gemini 2.0 Flash</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Confidence Gauge */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-slate-200">Confidence in Claim</span>
+                        <Badge className={`text-lg px-3 py-1 ${getConfidenceBadgeColor(state.confidence)}`}>
+                          {state.confidence}%
+                        </Badge>
+                      </div>
+                      <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                        <div
+                          className={`h-3 rounded-full transition-all duration-500 ${
+                            state.confidence > 70
+                              ? 'bg-green-500'
+                              : state.confidence > 40
+                                ? 'bg-yellow-500'
+                                : 'bg-red-500'
+                          }`}
+                          style={{ width: `${state.confidence}%` }}
+                        ></div>
+                      </div>
+                    </div>
 
-                {/* Verdict Text */}
-                <div className="prose prose-sm max-w-none">
-                  <p className="text-gray-800 whitespace-pre-wrap">{state.judgeVerdict}</p>
-                </div>
-              </div>
-            </div>
+                    <Separator className="bg-slate-600" />
+
+                    {/* Verdict Text */}
+                    <p className="text-slate-100 whitespace-pre-wrap leading-relaxed">{state.judgeVerdict}</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
         )}
 
         {/* Info Box */}
         {!state.believerArg && !state.loading && (
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
-            <p className="text-blue-700">
-              Select a demo claim or enter your own to start the debate. The system will generate arguments from three different AI
-              perspectives.
-            </p>
-          </div>
+          <Card className="border-blue-900 bg-blue-950">
+            <CardContent className="pt-6">
+              <p className="text-blue-200">
+                Select a demo claim or enter your own to start the debate. The system will generate arguments from three different AI
+                perspectives and a neutral judge verdict.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

@@ -10,34 +10,39 @@
 
 ---
 
-## Environment
-- **OS**: Windows 11
-- **Shell**: PowerShell (use `;` for command chaining, never `&&`)
-- **Runtime**: Node.js with npm (if applicable)
-- **Framework**: next-js
+## 🚨 CRITICAL PLATFORM RULES (NO EXCEPTIONS)
 
----
+### 1. NEVER START/STOP/MANAGE DEV SERVERS
+**This is non-negotiable.** Agents must NEVER:
+- Run `npm run dev`, `npm start`, or any development server commands
+- Start Python servers, Node servers, .NET servers, etc.
+- Manage processes with `pm2`, `forever`, or similar tools
+- Kill, stop, or restart any running services
 
-## Core Development Rules (Inherited from Master Workspace)
+**USER ONLY**: The user starts and manages all development servers. If a task requires running a server, tell the user what command to run and let them execute it.
 
-### Universal TypeScript Standards
+**Exception**: Running one-off commands (build, test, linting) in a fresh terminal is acceptable. Background dev servers are NOT.
+
+### 2. Core Development Rules (Inherited from Master Workspace)
+
+#### Universal TypeScript Standards
 - **NEVER use `any` types** - all types must be explicitly defined
 - **No type scattering** - avoid duplicate type definitions across files
 - **Strongly typed objects/classes only** - prefer interfaces and Zod schemas
 - Keep files under 500 lines - split into multiple modules if needed
 
-### Git Workflow
+#### Git Workflow
 - **Always create checkpoints before significant changes**: `git add .; git commit -m "checkpoint: before [change]"`
 - Use descriptive commit messages that explain the "why"
 - Confirm multi-step plans with user before executing
 
-### AI-First Development Philosophy
+#### AI-First Development Philosophy
 - Prefer AI/LLM solutions over programmatic approaches when applicable
 - Keep LLM prompts separate from core business logic
 - Never write mock/fallback implementations unless explicitly requested
 - Use "Not Implemented" placeholders for incomplete features
 
-### PowerShell Syntax (Windows)
+#### PowerShell Syntax (Windows)
 - Use `;` for command chaining (NEVER `&&`)
 - Native PowerShell cmdlets preferred
 - Example: `git add .; git commit -m "message"`
@@ -72,14 +77,18 @@ cd C:\Users\cclem\Dropbox\Source\Projects-{{PROJECT_YEAR}}\DevilsAdvocate
 # Install dependencies
 npm install  # or pip install -r requirements.txt, dotnet restore, etc.
 
-# Start dev server
-npm run dev  # or python src/main.py, dotnet run, etc.
+# ⚠️ DO NOT RUN - User starts the dev server
+# npm run dev  # or python src/main.py, dotnet run, etc.
+# → Tell the user what command to run; they execute it in their terminal
 
 # Git checkpoint (use semicolon, not &&)
 git add .; git commit -m "checkpoint: before refactor"
 
-# Run tests
+# Run tests (one-off command, acceptable)
 npm test  # or pytest, dotnet test, etc.
+
+# Run build (one-off command, acceptable)
+npm run build  # or dotnet build, python -m build, etc.
 ```
 
 ---

@@ -20,25 +20,7 @@ handoffs:
       DO NOT execute multiple phases. DO NOT read the master plan.
       Your scope is LIMITED to current-phase.md ONLY.
     send: true
-  - label: Verify Phase
-    agent: Verify Phase Agent
-    prompt: |
-      ⚠️ VERIFICATION ISOLATION ACTIVE - IGNORE ALL PRIOR CONVERSATION CONTEXT ⚠️
-      
-      You are verifying ONE phase only. Read from these files:
-      📄 Instructions: .plan-delegator/current-phase.md
-      📄 Results: .plan-delegator/phase-result.md
-      
-      CRITICAL RULES:
-      1. Read ONLY the files above - they contain your COMPLETE context
-      2. IGNORE any plan details from conversation history
-      3. Verify ONLY what was specified in current-phase.md
-      4. Compare against what was reported in phase-result.md
-      5. Write verification to: .plan-delegator/verification-result.md
-      6. Report "VERIFICATION COMPLETE: [PASS/FAIL]" and STOP
-      
-      DO NOT verify multiple phases. DO NOT read the master plan.
-    send: true
+  
 tools: ['read', 'agent', 'edit', 'search', 'web', 'github/*', 'github/*', 'todo']
 model: Claude Sonnet 4.5 (copilot)
 ---

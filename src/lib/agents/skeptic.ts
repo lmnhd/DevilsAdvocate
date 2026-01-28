@@ -1,8 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { skepticSystemPrompt } from '@/lib/prompts/skeptic';
 import { factCheck, whois, archive } from '@/lib/mcp';
 import { AIProviderManager } from '@/lib/utils/ai-provider';
 import type { AgentResponse } from '@/lib/types/agent';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -40,27 +45,46 @@ export class SkepticAgent {
         archiveResults
       );
 
-      // Call Anthropic Claude with provider fallback
-      const result = await this.providerManager.executeWithFallback(async (provider) => {
-        if (provider.provider === 'anthropic') {
-          return await anthropic.messages.create({
-            model: 'claude-3-5-sonnet-20241022',
-            max_tokens: maxTokens,
-            system: skepticSystemPrompt,
-            messages: [
-              {
-                role: 'user',
-                content: `Debate claim: "${claim}"\n\nCounter-evidence found:\n${counterEvidenceSummary}`,
-              },
-            ],
-          });
-        }
+      // Call Anthropic Claude directly with OpenAI fallback
+      let content = '';
+      let tokensUsed = 0;
 
-        throw new Error(`Provider ${provider.provider} not configured for direct use`);
-      });
-
-      const message = result.result.content[0];
-      const content = message.type === 'text' ? message.text : '';
+      try {
+        const response = await anthropic.messages.create({
+          model: 'claude-opus-4-1-20250805',
+          max_tokens: maxTokens,
+          system: skepticSystemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: `Debate claim: "${claim}"\n\nCounter-evidence found:\n${counterEvidenceSummary}`,
+            },
+          ],
+        });
+        const message = response.content[0];
+        content = message.type === 'text' ? message.text : '';
+        tokensUsed = response.usage?.input_tokens || 0;
+      } catch (anthropicError) {
+        // Fallback to OpenAI if Anthropic fails
+        console.warn('Anthropic failed, falling back to OpenAI:', anthropicError);
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            {
+              role: 'system',
+              content: skepticSystemPrompt,
+            },
+            {
+              role: 'user',
+              content: `Debate claim: "${claim}"\n\nCounter-evidence found:\n${counterEvidenceSummary}`,
+            },
+          ],
+          temperature: this.temperature,
+          max_tokens: maxTokens,
+        });
+        content = response.choices[0]?.message?.content || '';
+        tokensUsed = response.usage?.total_tokens || 0;
+      }
 
       return {
         role: 'skeptic',
@@ -75,8 +99,8 @@ export class SkepticAgent {
           debate_id: '',
           mentioned_by: 'skeptic' as const,
         })),
-        provider_used: result.provider,
-        tokens_used: result.result.usage?.input_tokens || 0,
+        provider_used: 'anthropic',
+        tokens_used: tokensUsed,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

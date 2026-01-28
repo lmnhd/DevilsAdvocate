@@ -1,7 +1,7 @@
 ---
 name: Verify Phase Agent
 description: 'Validates phase completion with strict evidence-based checks - reads ONLY from phase files, no assumptions, no fixes, just verify or fail'
-handoffs: [{  label: Start Verification, agent: Verify Phase Agent, prompt: verify the code, send: true }]
+handoffs: [{  label: Plan Delegator, agent: Plan Delegator Agent, prompt: Continue..., send: true }]
 tools: ['read', 'search', 'web', 'github/*']
 model: Grok Code Fast 1 (copilot)
 ---

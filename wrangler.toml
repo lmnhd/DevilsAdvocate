@@ -1,0 +1,13 @@
+name = "devilsadvocate"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "devilsadvocate-db"
+database_id = "devilsadvocate-db"
+
+# Environment configuration for local development
+[env.development]
+vars = { ENVIRONMENT = "development" }

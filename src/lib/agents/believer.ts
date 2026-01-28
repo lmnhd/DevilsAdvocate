@@ -35,7 +35,7 @@ export class BelieverAgent {
       const result = await this.providerManager.executeWithFallback(async (provider) => {
         if (provider.provider === 'openai') {
           return await openai.chat.completions.create({
-            model: 'gpt-4-turbo-preview',
+            model: 'gpt-4-turbo',
             messages: [
               {
                 role: 'system',

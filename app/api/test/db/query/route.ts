@@ -1,4 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { initDb } from '@/lib/db/client';
+import { DebateService } from '@/lib/db/services/debate-service';
+
+interface CloudflareEnv {
+  DB: any;
+}
+
+declare global {
+  var CLOUDFLARE_ENV: CloudflareEnv;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,22 +22,37 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Mock implementation for testing
-    const mockDebate = {
-      id,
-      claim: 'Mock debate claim',
-      believer_argument: 'Mock believer argument',
-      skeptic_argument: 'Mock skeptic argument',
-      judge_verdict: 'Mock judge verdict',
-      confidence_score: 50,
-      evidence_sources: [],
-      status: 'completed',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    // Get D1 database from Cloudflare environment
+    let db: any = globalThis.CLOUDFLARE_ENV?.DB;
+    
+    if (!db) {
+      console.warn('DB binding not found. Using development fallback.');
+      return NextResponse.json(
+        { success: false, error: 'D1 database binding not configured. Run with: wrangler dev' },
+        { status: 503 }
+      );
+    }
 
-    return NextResponse.json({ success: true, debate: mockDebate });
+    // Initialize database and service
+    const dbClient = initDb(db);
+    const debateService = new DebateService(dbClient);
+
+    // Query debate from database
+    const debate = await debateService.getDebateById(id);
+
+    if (!debate) {
+      return NextResponse.json(
+        { success: false, error: 'Debate not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      debate,
+    });
   } catch (error) {
+    console.error('Query debate error:', error);
     return NextResponse.json(
       { success: false, error: String(error) },
       { status: 400 }
