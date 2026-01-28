@@ -1,0 +1,143 @@
+{
+  "meta": {
+    "brand_name": "Devil's Advocate",
+    "description": "Bold, provocative design tokens for dual-perspective debate UI. Emphasizes visual tension, contrast, and cognitive friction.",
+    "color_scheme": "dual-mode (supports both light and dark with aggressive contrast)"
+  },
+  "colors": {
+    "comment": "CRITICAL: This brand uses OPPOSING color pairs to represent Believer vs. Skeptic. Never mix these colors in the same component.",
+    "believer": {
+      "DEFAULT": "#0EA5E9",
+      "hover": "#0284C7",
+      "foreground": "#FFFFFF",
+      "bg": "#E0F2FE",
+      "border": "#7DD3FC",
+      "description": "Sky blue - represents trust, confirmation, optimism"
+    },
+    "skeptic": {
+      "DEFAULT": "#EF4444",
+      "hover": "#DC2626",
+      "foreground": "#FFFFFF",
+      "bg": "#FEE2E2",
+      "border": "#FCA5A5",
+      "description": "Red - represents danger, skepticism, critical thinking"
+    },
+    "judge": {
+      "DEFAULT": "#8B5CF6",
+      "hover": "#7C3AED",
+      "foreground": "#FFFFFF",
+      "bg": "#EDE9FE",
+      "border": "#C4B5FD",
+      "description": "Purple - represents wisdom, synthesis, final verdict"
+    },
+    "background": {
+      "DEFAULT": "#0A0A0A",
+      "secondary": "#171717",
+      "tertiary": "#262626",
+      "description": "Near-black background for dramatic contrast"
+    },
+    "foreground": {
+      "DEFAULT": "#FAFAFA",
+      "secondary": "#E5E5E5",
+      "muted": "#A3A3A3",
+      "description": "Near-white text for readability against dark backgrounds"
+    },
+    "border": {
+      "DEFAULT": "#404040",
+      "strong": "#737373",
+      "description": "Subtle borders that don't distract from content"
+    },
+    "accent": {
+      "DEFAULT": "#FBBF24",
+      "hover": "#F59E0B",
+      "foreground": "#000000",
+      "description": "Amber - used for CTAs and attention-grabbing elements"
+    },
+    "destructive": {
+      "DEFAULT": "#DC2626",
+      "foreground": "#FFFFFF"
+    },
+    "success": {
+      "DEFAULT": "#10B981",
+      "foreground": "#FFFFFF"
+    },
+    "muted": {
+      "DEFAULT": "#262626",
+      "foreground": "#A3A3A3"
+    }
+  },
+  "typography": {
+    "font_family_headings": [
+      "Inter",
+      "-apple-system",
+      "BlinkMacSystemFont",
+      "Segoe UI",
+      "sans-serif"
+    ],
+    "font_family_body": [
+      "Inter",
+      "-apple-system",
+      "BlinkMacSystemFont",
+      "Segoe UI",
+      "sans-serif"
+    ],
+    "font_family_mono": [
+      "JetBrains Mono",
+      "Fira Code",
+      "Consolas",
+      "monospace"
+    ],
+    "font_weight_bold": "700",
+    "font_weight_semibold": "600",
+    "font_weight_medium": "500",
+    "font_weight_normal": "400",
+    "sizes": {
+      "h1": "48px",
+      "h2": "36px",
+      "h3": "24px",
+      "body": "16px",
+      "small": "14px",
+      "tiny": "12px"
+    },
+    "line_height": {
+      "tight": "1.25",
+      "normal": "1.5",
+      "relaxed": "1.75"
+    }
+  },
+  "ui": {
+    "border_radius_default": "8px",
+    "border_radius_small": "4px",
+    "border_radius_large": "12px",
+    "border_radius_full": "9999px",
+    "spacing_base_unit": "4px",
+    "animation_duration_fast": "150ms",
+    "animation_duration_normal": "300ms",
+    "animation_duration_slow": "500ms",
+    "shadow_sm": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+    "shadow_md": "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+    "shadow_lg": "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+    "shadow_glow_believer": "0 0 20px rgba(14, 165, 233, 0.5)",
+    "shadow_glow_skeptic": "0 0 20px rgba(239, 68, 68, 0.5)"
+  },
+  "layout": {
+    "max_width_container": "1280px",
+    "debate_column_width": "calc(50% - 2rem)",
+    "gauge_width": "120px",
+    "sidebar_width": "280px"
+  },
+  "images": {
+    "favicon": "/favicon-debate.svg",
+    "ogImage": "/og-devils-advocate.png",
+    "logo_light": "/logo-light.svg",
+    "logo_dark": "/logo-dark.svg"
+  },
+  "design_principles": [
+    "ALWAYS show Believer and Skeptic content in side-by-side columns with clear color coding",
+    "Use sharp corners and strong borders to emphasize division and conflict",
+    "Prefer dark backgrounds with high-contrast text (near-black bg + near-white text)",
+    "Use glow effects sparingly but dramatically for agent-specific highlights",
+    "Typography should be clean and highly readable - Inter for body, JetBrains Mono for code",
+    "Animate transitions to show 'tug of war' between competing arguments"
+  ]
+}
