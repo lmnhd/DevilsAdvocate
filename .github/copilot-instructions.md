@@ -128,6 +128,7 @@ When explaining this project:
 - **Test incrementally** - create test pages/files as you develop
 - **Git checkpoints** before major changes
 - **Ask before structural changes** - confirm with user
+- **Use 'brand-identity' skill** for UI/UX consistency
 
 ---
 
