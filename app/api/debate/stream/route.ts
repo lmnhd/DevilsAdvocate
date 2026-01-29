@@ -19,10 +19,11 @@ function getTokensForLength(length: 'short' | 'medium' | 'long'): number {
   return limits[length] || limits.medium;
 }
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const body: StreamRequest = await request.json();
-    const { claim, debateLength = 'medium' } = body;
+    const { searchParams } = new URL(request.url);
+    const claim = searchParams.get('claim');
+    const debateLength = (searchParams.get('debateLength') as 'short' | 'medium' | 'long') || 'medium';
 
     if (!claim) {
       return NextResponse.json({ error: 'Claim is required' }, { status: 400 });
