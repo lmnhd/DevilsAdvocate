@@ -88,6 +88,19 @@ export class SkepticAgent {
 
         console.log(`[SKEPTIC] Tools completed in ${Date.now() - toolStart}ms`);
         console.log(`[SKEPTIC]   Tools successful: ${toolsUsed}/3`);
+        console.log(`[SKEPTIC] 🔍 DEBUG: MCP Tool Results:`);
+        console.log(`[SKEPTIC]   Fact Check - data length: ${factCheckResults.data?.length || 0}, error: ${factCheckResults.error || 'none'}`);
+        if (factCheckResults.data?.length > 0) {
+          console.log(`[SKEPTIC]     First FC item:`, factCheckResults.data[0]);
+        }
+        console.log(`[SKEPTIC]   WHOIS - has domain: ${!!domainInfo.data?.domain}, error: ${domainInfo.error || 'none'}`);
+        if (domainInfo.data?.domain) {
+          console.log(`[SKEPTIC]     Domain info:`, domainInfo.data);
+        }
+        console.log(`[SKEPTIC]   Archive - data length: ${archiveResults.data?.length || 0}, error: ${archiveResults.error || 'none'}`);
+        if (archiveResults.data?.length > 0) {
+          console.log(`[SKEPTIC]     First archive item:`, archiveResults.data[0]);
+        }
 
         counterEvidenceSummary = this.formatCounterEvidence(
           factCheckResults,
@@ -183,44 +196,56 @@ export class SkepticAgent {
       console.log(`[SKEPTIC]   Content length: ${content.length} chars`);
       console.log(`[SKEPTIC]   Preview: ${content.substring(0, 80)}...`);
 
+      // Build evidence array
+      const evidenceArray = [
+        // Fact check results
+        ...(factCheckResults.data || []).map((fc: any, idx: number) => ({
+          id: `skeptic-fc-${idx}`,
+          source_url: fc.url || '',
+          domain: fc.publisher || '',
+          snippet: `Fact check rating: ${fc.rating || 'Unknown'}`,
+          credibility_score: 75,
+          timestamp: new Date(),
+          debate_id: '',
+          mentioned_by: 'skeptic' as const,
+        })),
+        // Archive results
+        ...(archiveResults.data || []).map((ar: any, idx: number) => ({
+          id: `skeptic-ar-${idx}`,
+          source_url: ar.archiveUrl || ar.url || '',
+          domain: 'archive.org',
+          snippet: ar.available ? `Archived: ${ar.timestamp}` : 'Not archived',
+          credibility_score: 70,
+          timestamp: new Date(),
+          debate_id: '',
+          mentioned_by: 'skeptic' as const,
+        })),
+        // Domain info as evidence
+        ...(domainInfo.data?.domain ? [{
+          id: `skeptic-whois`,
+          source_url: `https://${domainInfo.data.domain}`,
+          domain: domainInfo.data.domain,
+          snippet: `Domain age: ${domainInfo.data.ageInDays ? Math.floor(domainInfo.data.ageInDays / 365) + ' years' : 'Unknown'}`,
+          credibility_score: domainInfo.data.credibilityScore || 60,
+          timestamp: new Date(),
+          debate_id: '',
+          mentioned_by: 'skeptic' as const,
+        }] : []),
+      ];
+
+      console.log(`[SKEPTIC] 🔍 DEBUG: Building evidence array:`);
+      console.log(`[SKEPTIC]   Total evidence items: ${evidenceArray.length}`);
+      console.log(`[SKEPTIC]   Fact check items: ${(factCheckResults.data || []).length}`);
+      console.log(`[SKEPTIC]   Archive items: ${(archiveResults.data || []).length}`);
+      console.log(`[SKEPTIC]   Domain info items: ${domainInfo.data?.domain ? 1 : 0}`);
+      if (evidenceArray.length > 0) {
+        console.log(`[SKEPTIC]   First evidence item:`, evidenceArray[0]);
+      }
+
       const response: AgentResponse = {
         role: 'skeptic',
         content,
-        evidence: [
-          // Fact check results
-          ...(factCheckResults.data || []).map((fc: any, idx: number) => ({
-            id: `skeptic-fc-${idx}`,
-            source_url: fc.url || '',
-            domain: fc.publisher || '',
-            snippet: `Fact check rating: ${fc.rating || 'Unknown'}`,
-            credibility_score: 75,
-            timestamp: new Date(),
-            debate_id: '',
-            mentioned_by: 'skeptic' as const,
-          })),
-          // Archive results
-          ...(archiveResults.data || []).map((ar: any, idx: number) => ({
-            id: `skeptic-ar-${idx}`,
-            source_url: ar.archiveUrl || ar.url || '',
-            domain: 'archive.org',
-            snippet: ar.available ? `Archived: ${ar.timestamp}` : 'Not archived',
-            credibility_score: 70,
-            timestamp: new Date(),
-            debate_id: '',
-            mentioned_by: 'skeptic' as const,
-          })),
-          // Domain info as evidence
-          ...(domainInfo.data?.domain ? [{
-            id: `skeptic-whois`,
-            source_url: `https://${domainInfo.data.domain}`,
-            domain: domainInfo.data.domain,
-            snippet: `Domain age: ${domainInfo.data.ageInDays ? Math.floor(domainInfo.data.ageInDays / 365) + ' years' : 'Unknown'}`,
-            credibility_score: domainInfo.data.credibilityScore || 60,
-            timestamp: new Date(),
-            debate_id: '',
-            mentioned_by: 'skeptic' as const,
-          }] : []),
-        ],
+        evidence: evidenceArray,
         provider_used: providerUsed,
         tokens_used: tokensUsed,
       };

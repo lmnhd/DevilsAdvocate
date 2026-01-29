@@ -66,11 +66,35 @@ export async function GET(request: NextRequest) {
               // Extract evidence from agent's evidence array
               const agentEvidence = event.data.evidence || [];
               console.log(`[STREAM]   Evidence items from agent: ${agentEvidence.length}`);
+              console.log(`[STREAM]   🔍 DEBUG: Event.data structure:`, {
+                hasEvidence: !!event.data.evidence,
+                evidenceArray: agentEvidence,
+                evidenceLength: agentEvidence.length,
+                firstItem: agentEvidence[0],
+              });
               
               for (const ev of agentEvidence) {
                 try {
-                  if (!ev.source_url) continue;
+                  console.log(`[STREAM]   🔍 Processing evidence item:`, {
+                    source_url: ev.source_url,
+                    domain: ev.domain,
+                    mentioned_by: ev.mentioned_by,
+                    snippet: ev.snippet?.substring(0, 50),
+                  });
+                  
+                  if (!ev.source_url) {
+                    console.warn(`[STREAM]   ⚠️ Skipping evidence with no source_url`);
+                    continue;
+                  }
+                  
                   const tracked = await tracker.trackEvidence(ev.source_url, ev.snippet || '', 'believer');
+                  console.log(`[STREAM]   ✓ Tracked evidence:`, {
+                    url: tracked.url,
+                    domain: tracked.domain,
+                    credibility: tracked.credibility_score,
+                    mentioned_by: tracked.mentioned_by,
+                  });
+                  
                   const evidenceData = formatSSE('believer_evidence', {
                     url: tracked.url,
                     credibility: tracked.credibility_score || ev.credibility_score || 50,
@@ -80,7 +104,7 @@ export async function GET(request: NextRequest) {
                   controller.enqueue(encoder.encode(evidenceData));
                 } catch (evErr) {
                   // Skip invalid evidence silently
-                  console.warn(`[STREAM] Skipped invalid evidence:`, evErr instanceof Error ? evErr.message : 'unknown');
+                  console.warn(`[STREAM] ❌ Skipped invalid evidence:`, evErr instanceof Error ? evErr.message : 'unknown');
                 }
               }
 
@@ -108,11 +132,35 @@ export async function GET(request: NextRequest) {
               // Extract evidence from agent's evidence array
               const agentEvidence = event.data.evidence || [];
               console.log(`[STREAM]   Evidence items from agent: ${agentEvidence.length}`);
+              console.log(`[STREAM]   🔍 DEBUG: Event.data structure:`, {
+                hasEvidence: !!event.data.evidence,
+                evidenceArray: agentEvidence,
+                evidenceLength: agentEvidence.length,
+                firstItem: agentEvidence[0],
+              });
               
               for (const ev of agentEvidence) {
                 try {
-                  if (!ev.source_url) continue;
+                  console.log(`[STREAM]   🔍 Processing evidence item:`, {
+                    source_url: ev.source_url,
+                    domain: ev.domain,
+                    mentioned_by: ev.mentioned_by,
+                    snippet: ev.snippet?.substring(0, 50),
+                  });
+                  
+                  if (!ev.source_url) {
+                    console.warn(`[STREAM]   ⚠️ Skipping evidence with no source_url`);
+                    continue;
+                  }
+                  
                   const tracked = await tracker.trackEvidence(ev.source_url, ev.snippet || '', 'skeptic');
+                  console.log(`[STREAM]   ✓ Tracked evidence:`, {
+                    url: tracked.url,
+                    domain: tracked.domain,
+                    credibility: tracked.credibility_score,
+                    mentioned_by: tracked.mentioned_by,
+                  });
+                  
                   const evidenceData = formatSSE('skeptic_evidence', {
                     url: tracked.url,
                     credibility: tracked.credibility_score || ev.credibility_score || 50,
@@ -122,7 +170,7 @@ export async function GET(request: NextRequest) {
                   controller.enqueue(encoder.encode(evidenceData));
                 } catch (evErr) {
                   // Skip invalid evidence silently
-                  console.warn(`[STREAM] Skipped invalid evidence:`, evErr instanceof Error ? evErr.message : 'unknown');
+                  console.warn(`[STREAM] ❌ Skipped invalid evidence:`, evErr instanceof Error ? evErr.message : 'unknown');
                 }
               }
 
