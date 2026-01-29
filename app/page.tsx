@@ -22,12 +22,40 @@ interface DebateState {
   confidence: number | null;
   riskAssessment: 'low' | 'medium' | 'high' | null;
   debateId: string | null;
+  harmIfWrong: string | null;
+  opportunityIfWrong: string | null;
+  keyFactors: string[];
+  criticalGaps: string | null;
 }
 
 const SAMPLE_CLAIMS = [
-  'Vaccines cause autism',
-  'Climate change is a hoax',
-  'The Earth is flat'
+  { text: 'Social media causes more harm than good', emoji: '📱', classes: 'bg-pink-200 hover:bg-pink-300 text-pink-900' },
+  { text: 'Remote work is more productive than office work', emoji: '🏠', classes: 'bg-indigo-200 hover:bg-indigo-300 text-indigo-900' },
+  { text: 'Cryptocurrency is the future of finance', emoji: '₿', classes: 'bg-yellow-200 hover:bg-yellow-300 text-yellow-900' },
+  { text: 'Nuclear energy is essential for fighting climate change', emoji: '⚛️', classes: 'bg-teal-200 hover:bg-teal-300 text-teal-900' },
+  { text: 'Genetic engineering should be used to enhance humans', emoji: '🧬', classes: 'bg-rose-200 hover:bg-rose-300 text-rose-900' },
+  { text: 'Space exploration is worth the investment', emoji: '🚀', classes: 'bg-purple-200 hover:bg-purple-300 text-purple-900' },
+  { text: 'Climate change is primarily caused by human activity', emoji: '🌍', classes: 'bg-emerald-200 hover:bg-emerald-300 text-emerald-900' },
+  { text: 'Artificial intelligence will replace most human jobs by 2030', emoji: '🤖', classes: 'bg-sky-200 hover:bg-sky-300 text-sky-900' },
+  { text: 'Universal basic income would solve poverty', emoji: '💰', classes: 'bg-amber-200 hover:bg-amber-300 text-amber-900' }
+];
+
+const OPENAI_MODELS = [
+  { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable, multimodal flagship' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Affordable small model' },
+  { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Previous generation flagship' },
+  { id: 'gpt-4', name: 'GPT-4', description: 'Original GPT-4' },
+  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and affordable' },
+  { id: 'o1', name: 'o1', description: 'Advanced reasoning model' },
+  { id: 'o1-mini', name: 'o1 Mini', description: 'Faster reasoning model' }
+];
+
+const ANTHROPIC_MODELS = [
+  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Most intelligent model' },
+  { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Fastest model' },
+  { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Powerful performance' },
+  { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', description: 'Balanced performance' },
+  { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', description: 'Fast responses' }
 ];
 
 export default function HomePage() {
@@ -39,10 +67,18 @@ export default function HomePage() {
     verdict: null,
     confidence: null,
     riskAssessment: null,
-    debateId: null
+    debateId: null,
+    harmIfWrong: null,
+    opportunityIfWrong: null,
+    keyFactors: [],
+    criticalGaps: null,
   });
 
   const [error, setError] = useState<string | null>(null);
+  const [selectedClaim, setSelectedClaim] = useState<string>('');
+  const [believerModel, setBelieverModel] = useState('gpt-4o');
+  const [skepticModel, setSkepticModel] = useState('claude-3-5-sonnet-20241022');
+  const [judgeModel, setJudgeModel] = useState('gpt-4o');
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const handleDebateStart = async (claim: string, length: 'short' | 'medium' | 'long') => {
@@ -55,7 +91,11 @@ export default function HomePage() {
       verdict: null,
       confidence: null,
       riskAssessment: null,
-      debateId: null
+      debateId: null,
+      harmIfWrong: null,
+      opportunityIfWrong: null,
+      keyFactors: [],
+      criticalGaps: null,
     });
 
     try {
@@ -156,6 +196,10 @@ export default function HomePage() {
           verdict: data.verdict,
           confidence: data.confidence,
           riskAssessment: data.riskAssessment || 'medium',
+          harmIfWrong: data.harmIfWrong || null,
+          opportunityIfWrong: data.opportunityIfWrong || null,
+          keyFactors: data.keyFactors || [],
+          criticalGaps: data.criticalGaps || null,
           isStreaming: false
         }));
         eventSource.close();
@@ -193,7 +237,7 @@ export default function HomePage() {
   };
 
   const handleQuickDebate = (claim: string) => {
-    handleDebateStart(claim, 'medium');
+    setSelectedClaim(claim);
   };
 
   const handleSaveDebate = async () => {
@@ -242,142 +286,295 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        {/* Hero Section */}
-        <div className="mb-12 space-y-2">
-          <h1 className="text-5xl font-bold text-foreground">Devil's Advocate</h1>
-          <p className="text-lg text-foreground-muted">
+    <main className="min-h-screen bg-[#0A0A0A]">
+      {/* Hero Section */}
+      <Card className="w-full  bg-linear-to-b from-[#171717] to-[#0A0A0A] border-b border-[#404040] py-6 px-6">
+        <div className="max-w-6xl mx-auto">
+          <h1 
+          className="text-3xl md:text-6xl font-bold text-[#FAFAFA] mb-4 tracking-tight"
+          >
+            Devil's Advocate
+          </h1>
+          <p className="text-xl ml-auto md:text-2xl text-[#A3A3A3] leading-relaxed max-w-3xl font-light mb-4">
             Multi-agent fact-checking with real-time dual-perspective debate analysis
           </p>
-          <p className="text-sm text-foreground-muted">
+          <p className="text-md text-pink-700 p-2 rounded-2xl opacity-80 ml-auto bg-linear-30 from-slate-900 to-55% text-[#dac6c6] max-w-3xl leading-relaxed">
             Watch AI agents argue opposing viewpoints on any claim, with real-time evidence tracking and credibility scoring.
           </p>
         </div>
+      </Card>
 
-        <Separator className="mb-12 bg-border" />
+      <div className="px-8 py-12">
+        <div className="max-w-6xl mx-auto">
+          {/* Error Display */}
+          {error && (
+            <Card className="mb-8 border-red-900/40 bg-red-950/20">
+              <div className="p-4 flex gap-3">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-[#E5E5E5]">{error}</p>
+              </div>
+            </Card>
+          )}
 
-        {/* Error Display */}
-        {error && (
-          <Card className="mb-6 border-destructive/50 bg-destructive/10">
-            <div className="p-4 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-              <p className="text-sm text-foreground">{error}</p>
-            </div>
-          </Card>
-        )}
+          {/* Configuration Cards */}
+          <div className="flex flex-wrap gap-4 mb-10">
+            {/* Input Card */}
+            <Card className="flex-1 min-w-full border-[#404040] bg-[#171717]">
+              <div className="p-6">
+                <h2 className="text-lg font-semibold text-[#FAFAFA] mb-4">Enter Your Claim</h2>
+                <DebateInput 
+                  onSubmit={handleDebateStart} 
+                  isLoading={debateState.isStreaming}
+                  externalClaim={selectedClaim}
+                />
+              </div>
+            </Card>
 
-        {/* Input Section */}
-        <div className="mb-8">
-          <DebateInput onSubmit={handleDebateStart} isLoading={debateState.isStreaming} />
-        </div>
+            {/* Model Selection Panel */}
+            <Card className="flex-1 min-w-full border-[#404040] bg-[#171717]">
+              <div className="p-6">
+                <h2 className="text-lg font-semibold text-[#FAFAFA] mb-4">🤖 AI Model Configuration</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Believer Model */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-[#0EA5E9]">
+                      <span className="text-lg">✓</span>
+                      Believer
+                    </label>
+                    <select
+                      value={believerModel}
+                      onChange={(e) => setBelieverModel(e.target.value)}
+                      disabled={debateState.isStreaming}
+                      className="w-full px-3 py-2 bg-[#262626] border border-[#404040] rounded-lg text-[#E5E5E5] text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] disabled:opacity-50"
+                    >
+                      <optgroup label="OpenAI">
+                        {OPENAI_MODELS.map(model => (
+                          <option key={model.id} value={model.id}>
+                            {model.name} - {model.description}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Anthropic">
+                        {ANTHROPIC_MODELS.map(model => (
+                          <option key={model.id} value={model.id}>
+                            {model.name} - {model.description}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
 
-        {/* Quick Debate Samples */}
-        {!debateState.isStreaming && debateState.believerTokens.length === 0 && (
-          <div className="mb-8 space-y-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Quick Start Examples</h2>
-              <Separator className="flex-1 bg-border" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {SAMPLE_CLAIMS.map((claim, idx) => (
+                  {/* Skeptic Model */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-[#EF4444]">
+                      <span className="text-lg">✗</span>
+                      Skeptic
+                    </label>
+                    <select
+                      value={skepticModel}
+                      onChange={(e) => setSkepticModel(e.target.value)}
+                      disabled={debateState.isStreaming}
+                      className="w-full px-3 py-2 bg-[#262626] border border-[#404040] rounded-lg text-[#E5E5E5] text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] disabled:opacity-50"
+                    >
+                      <optgroup label="Anthropic">
+                        {ANTHROPIC_MODELS.map(model => (
+                          <option key={model.id} value={model.id}>
+                            {model.name} - {model.description}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="OpenAI">
+                        {OPENAI_MODELS.map(model => (
+                          <option key={model.id} value={model.id}>
+                            {model.name} - {model.description}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+
+                  {/* Judge Model */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-[#8B5CF6]">
+                      <span className="text-lg">⚖️</span>
+                      Judge
+                    </label>
+                    <select
+                      value={judgeModel}
+                      onChange={(e) => setJudgeModel(e.target.value)}
+                      disabled={debateState.isStreaming}
+                      className="w-full px-3 py-2 bg-[#262626] border border-[#404040] rounded-lg text-[#E5E5E5] text-sm focus:outline-none focus:ring-2 focus:ring-[#8B5CF6] disabled:opacity-50"
+                    >
+                      <optgroup label="OpenAI">
+                        {OPENAI_MODELS.map(model => (
+                          <option key={model.id} value={model.id}>
+                            {model.name} - {model.description}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Anthropic">
+                        {ANTHROPIC_MODELS.map(model => (
+                          <option key={model.id} value={model.id}>
+                            {model.name} - {model.description}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+                </div>
+                <p className="text-xs text-[#737373] mt-3">
+                  💡 Tip: Mix different models for diverse perspectives and reasoning styles
+                </p>
+              </div>
+            </Card>
+          </div>
+
+          {/* Main Debate Content - Wrapping Cards */}
+          {(debateState.isStreaming || debateState.believerTokens.length > 0) && (
+            <div className="space-y-8">
+              {/* Judge Verdict or Streaming Placeholder - Fixed at Top */}
+              {debateState.verdict && debateState.confidence !== null ? (
+                <div className="bg-[#171717] border border-[#404040] rounded-lg p-6">
+                  <JudgeVerdict
+                    verdict={debateState.verdict}
+                    confidence={debateState.confidence}
+                    riskAssessment={debateState.riskAssessment || 'medium'}
+                    harmIfWrong={debateState.harmIfWrong || undefined}
+                    opportunityIfWrong={debateState.opportunityIfWrong || undefined}
+                    keyFactors={debateState.keyFactors}
+                    criticalGaps={debateState.criticalGaps || undefined}
+                  />
+                </div>
+              ) : (
+                <div className="bg-[#171717] border border-[#404040] rounded-lg p-6">
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-[#8B5CF6] mx-auto mb-3" />
+                      <p className="text-sm text-[#A3A3A3]">{debateState.isStreaming ? 'Debate in progress...' : 'Analyzing results...'}</p>
+                      <p className="text-xs text-[#737373] mt-1">Judge verdict pending</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Dual Columns with Evidence - Fixed Height with Scrolling */}
+              <div className="flex flex-wrap gap-4">
+                {/* Believer Column */}
+                <Card className="flex-1 min-w-sm border-[#404040] bg-[#171717] flex flex-col max-h-[calc(100vh-16rem)]">
+                  <div className="p-4 border-b border-[#404040] shrink-0">
+                    <h3 className="text-lg font-semibold text-[#FAFAFA]">✓ Believer</h3>
+                    <p className="text-xs text-[#737373]">OpenAI GPT-4</p>
+                  </div>
+                  <div className="flex-1 p-4 overflow-y-auto">
+                    <ArgumentColumn
+                      agent="believer"
+                      tokens={debateState.believerTokens}
+                      isStreaming={debateState.isStreaming}
+                    />
+                  </div>
+                </Card>
+
+                {/* Skeptic Column */}
+                <Card className="flex-1 min-w-sm border-[#404040] bg-[#171717] flex flex-col max-h-[calc(100vh-16rem)]">
+                  <div className="p-4 border-b border-[#404040] shrink-0">
+                    <h3 className="text-lg font-semibold text-[#FAFAFA]">✗ Skeptic</h3>
+                    <p className="text-xs text-[#737373]">Anthropic Claude</p>
+                  </div>
+                  <div className="flex-1 p-4 overflow-y-auto">
+                    <ArgumentColumn
+                      agent="skeptic"
+                      tokens={debateState.skepticTokens}
+                      isStreaming={debateState.isStreaming}
+                    />
+                  </div>
+                </Card>
+
+                {/* Evidence Panel */}
+                <Card className="flex-1 min-w-sm border-[#404040] bg-[#171717] flex flex-col max-h-[calc(100vh-16rem)]">
+                  <div className="p-4 border-b border-[#404040] shrink-0">
+                    <h3 className="text-lg font-semibold text-[#FAFAFA]">Evidence Sources</h3>
+                    <p className="text-xs text-[#737373]">{debateState.evidence.length} sources tracked</p>
+                  </div>
+                  <div className="flex-1 p-4 overflow-y-auto">
+                    <EvidencePanel evidence={debateState.evidence} />
+                  </div>
+                </Card>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3 justify-between border-t border-[#404040] pt-6">
                 <Button
-                  key={idx}
-                  onClick={() => handleQuickDebate(claim)}
-                  variant="outline"
-                  className="h-auto py-3 px-4 text-left text-sm font-normal text-foreground hover:bg-background-secondary/50 border-border"
+                  onClick={handleStopDebate}
+                  disabled={!debateState.isStreaming}
+                  variant="destructive"
+                  className="gap-2"
                 >
-                  {claim}
+                  <Square className="w-4 h-4" />
+                  Stop Debate
                 </Button>
+                <div className="flex gap-3">
+                  {!debateState.isStreaming && debateState.believerTokens.length > 0 && (
+                    <>
+                      <Button
+                        onClick={handleSaveDebate}
+                        className="gap-2 bg-[#0EA5E9] hover:bg-[#0284C7] text-[#0A0A0A]"
+                        disabled={!debateState.verdict}
+                      >
+                        💾 Save Debate
+                      </Button>
+                      {debateState.debateId && (
+                        <Button
+                          onClick={handleCopyLink}
+                          className="gap-2 bg-[#0EA5E9]/70 hover:bg-[#0EA5E9]/60 text-[#0A0A0A]"
+                        >
+                          <Link2 className="w-4 h-4" />
+                          Copy Link
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!debateState.isStreaming && debateState.believerTokens.length === 0 && (
+            <Card className="border-[#404040]/50 bg-[#171717]/50 mb-8">
+              <div className="py-16 px-6 text-center">
+                <p className="text-sm text-[#737373]">
+                  Enter a claim above or select a quick example to begin a live debate
+                </p>
+              </div>
+            </Card>
+          )}
+
+          {/* Quick Start Examples - Colored Squares */}
+          <div className="mt-8">
+            <h2 className="text-lg font-bold text-[#FAFAFA] mb-6 text-center uppercase tracking-wide">⚡ Quick Start Examples</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+              {SAMPLE_CLAIMS.map((example, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleQuickDebate(example.text)}
+                  disabled={debateState.isStreaming}
+                  className={`relative overflow-hidden rounded-xl w-full h-48 shadow-md transition-all duration-200 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border border-black/10 ${example.classes}`}
+                >
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4">
+                    <span className="text-5xl">{example.emoji}</span>
+                    <p className="text-xs font-bold leading-tight text-center px-2">
+                      {example.text}
+                    </p>
+                  </div>
+                </button>
               ))}
             </div>
           </div>
-        )}
 
-        {/* Main Debate Content */}
-        {(debateState.isStreaming || debateState.believerTokens.length > 0) && (
-          <div className="space-y-8">
-            {/* Dual Columns - Stack on mobile */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-96">
-              <ArgumentColumn
-                agent="believer"
-                tokens={debateState.believerTokens}
-                isStreaming={debateState.isStreaming}
-              />
-              <ArgumentColumn
-                agent="skeptic"
-                tokens={debateState.skepticTokens}
-                isStreaming={debateState.isStreaming}
-              />
-            </div>
+         
 
-            {/* Truth Gauge */}
-            {(debateState.confidence !== null || debateState.isStreaming) && (
-              <TruthGauge
-                confidence={debateState.confidence || 50}
-                isAnimating={debateState.isStreaming}
-              />
-            )}
-
-            {/* Judge Verdict */}
-            {debateState.verdict && debateState.confidence !== null && (
-              <JudgeVerdict
-                verdict={debateState.verdict}
-                confidence={debateState.confidence}
-                riskAssessment={debateState.riskAssessment || 'medium'}
-              />
-            )}
-
-            {/* Evidence Panel */}
-            <EvidencePanel evidence={debateState.evidence} />
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3 justify-between border-t border-border pt-6">
-              <Button
-                onClick={handleStopDebate}
-                disabled={!debateState.isStreaming}
-                variant="destructive"
-                className="gap-2"
-              >
-                <Square className="w-4 h-4" />
-                Stop Debate
-              </Button>
-              <div className="flex gap-3">
-                {!debateState.isStreaming && debateState.believerTokens.length > 0 && (
-                  <>
-                    <Button
-                      onClick={handleSaveDebate}
-                      className="gap-2 bg-accent hover:bg-accent/90 text-foreground"
-                      disabled={!debateState.verdict}
-                    >
-                      💾 Save Debate
-                    </Button>
-                    {debateState.debateId && (
-                      <Button
-                        onClick={handleCopyLink}
-                        className="gap-2 bg-accent/70 hover:bg-accent/60 text-foreground"
-                      >
-                        <Link2 className="w-4 h-4" />
-                        Copy Link
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!debateState.isStreaming && debateState.believerTokens.length === 0 && (
-          <Card className="border-border/50 bg-background-secondary/30">
-            <div className="py-16 px-6 text-center">
-              <p className="text-sm text-foreground-muted">
-                Enter a claim above or select a quick example to begin a live debate
-              </p>
-            </div>
-          </Card>
-        )}
+          
+        </div>
       </div>
     </main>
   );

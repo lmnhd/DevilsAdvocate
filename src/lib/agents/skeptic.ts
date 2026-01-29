@@ -186,16 +186,41 @@ export class SkepticAgent {
       const response: AgentResponse = {
         role: 'skeptic',
         content,
-        evidence: (factCheckResults.data || []).map((fc: any, idx: number) => ({
-          id: `skeptic-${idx}`,
-          source_url: fc.url || '',
-          domain: fc.publisher || '',
-          snippet: fc.rating || '',
-          credibility_score: 75,
-          timestamp: new Date(),
-          debate_id: '',
-          mentioned_by: 'skeptic' as const,
-        })),
+        evidence: [
+          // Fact check results
+          ...(factCheckResults.data || []).map((fc: any, idx: number) => ({
+            id: `skeptic-fc-${idx}`,
+            source_url: fc.url || '',
+            domain: fc.publisher || '',
+            snippet: `Fact check rating: ${fc.rating || 'Unknown'}`,
+            credibility_score: 75,
+            timestamp: new Date(),
+            debate_id: '',
+            mentioned_by: 'skeptic' as const,
+          })),
+          // Archive results
+          ...(archiveResults.data || []).map((ar: any, idx: number) => ({
+            id: `skeptic-ar-${idx}`,
+            source_url: ar.archiveUrl || ar.url || '',
+            domain: 'archive.org',
+            snippet: ar.available ? `Archived: ${ar.timestamp}` : 'Not archived',
+            credibility_score: 70,
+            timestamp: new Date(),
+            debate_id: '',
+            mentioned_by: 'skeptic' as const,
+          })),
+          // Domain info as evidence
+          ...(domainInfo.data?.domain ? [{
+            id: `skeptic-whois`,
+            source_url: `https://${domainInfo.data.domain}`,
+            domain: domainInfo.data.domain,
+            snippet: `Domain age: ${domainInfo.data.ageInDays ? Math.floor(domainInfo.data.ageInDays / 365) + ' years' : 'Unknown'}`,
+            credibility_score: domainInfo.data.credibilityScore || 60,
+            timestamp: new Date(),
+            debate_id: '',
+            mentioned_by: 'skeptic' as const,
+          }] : []),
+        ],
         provider_used: providerUsed,
         tokens_used: tokensUsed,
       };

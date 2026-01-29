@@ -130,17 +130,20 @@ export class DebateOrchestrator {
   private isRefusalResponse(content: string): boolean {
     if (!content || content.length === 0) return true;
     
-    // Check for common refusal patterns
+    // Only check for explicit AI refusal patterns (first-person statements)
+    // Do NOT flag strong factual rebuttals or scientific language
     const refusalPatterns = [
-      /i'm sorry|i cannot|i can't|i'm unable|unable to/i,
-      /i don't feel comfortable/i,
-      /this request|this content|this topic.*violates/i,
-      /safety policy|content policy|ethical/i,
-      /inappropriate|harmful|dangerous/i,
-      /cannot assist|cannot help/i,
+      /^I('m| am) (sorry|unable|not able)/i,
+      /^I (cannot|can't|won't)/i,
+      /^I don't feel comfortable/i,
+      /^(I|This) violates (my|our) (safety|content|ethical) (policy|guidelines)/i,
+      /^As an AI,? I (cannot|can't|am unable)/i,
+      /^I'm programmed not to/i,
     ];
 
-    return refusalPatterns.some(pattern => pattern.test(content));
+    // Must match at start of response or after whitespace to avoid false positives
+    const normalizedContent = content.trim();
+    return refusalPatterns.some(pattern => pattern.test(normalizedContent));
   }
 
   async orchestrate(request: DebateRequest): Promise<DebateResult> {

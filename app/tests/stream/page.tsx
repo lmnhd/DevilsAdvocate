@@ -147,33 +147,51 @@ export default function StreamTestPage() {
   }, [skepticTokens]);
 
   const getCredibilityColor = (score: number) => {
-    if (score > 70) return 'text-green-400';
-    if (score > 40) return 'text-yellow-400';
-    return 'text-red-400';
+    if (score > 70) return 'text-[#10B981]';
+    if (score > 40) return 'text-[#FBBF24]';
+    return 'text-[#EF4444]';
   };
 
   const getCredibilityBg = (score: number) => {
-    if (score > 70) return 'bg-green-900/30 border-green-700';
-    if (score > 40) return 'bg-yellow-900/30 border-yellow-700';
-    return 'bg-red-900/30 border-red-700';
+    if (score > 70) return 'bg-[#10B981]/10 border-[#10B981]/40';
+    if (score > 40) return 'bg-[#FBBF24]/10 border-[#FBBF24]/40';
+    return 'bg-[#EF4444]/10 border-[#EF4444]/40';
   };
 
   return (
-    <div className="min-h-screen w-full mx-auto my-8 bg-slate-950 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Live Debate Stream</h1>
-          <p className="text-slate-400">Real-time streaming with evidence tracking</p>
+    <div className="min-h-screen w-full bg-[#0A0A0A]">
+      {/* Hero Section */}
+      <div className="w-full bg-gradient-to-b from-[#171717] to-[#0A0A0A] border-b border-[#404040] py-16 px-8">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-6xl md:text-7xl font-bold text-[#FAFAFA] mb-4 tracking-tight">
+            Live Debate Stream
+          </h1>
+          <p className="text-xl md:text-2xl text-[#A3A3A3] leading-relaxed max-w-3xl font-light">
+            Watch two AI perspectives clash in real-time. Track evidence sources and witness the judge's verdict unfold as it streams.
+          </p>
         </div>
+      </div>
 
-        {/* Input Section */}
-        <Card className="mb-8 border-slate-700 bg-slate-900">
-          <CardHeader>
-            <CardTitle className="text-white">Start Streaming Debate</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-200">Debate Length:</p>
+      <div className="p-8">
+        <div className="max-w-6xl mx-auto">
+
+        {/* Error Display */}
+        {error && (
+          <Card className="mb-6 border-red-900/40 bg-red-950/20">
+            <CardContent className="pt-6">
+              <p className="text-red-300">{error}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Configuration Section */}
+        <div className="flex flex-wrap gap-4 mb-10">
+          {/* Debate Length Card */}
+          <Card className="flex-1 min-w-xs border-[#404040] bg-[#171717]">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[#FAFAFA] text-lg">Debate Length</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="flex gap-2">
                 {(['short', 'medium', 'long'] as const).map((length) => (
                   <Button
@@ -181,127 +199,143 @@ export default function StreamTestPage() {
                     variant={debateLength === length ? 'default' : 'outline'}
                     onClick={() => setDebateLength(length)}
                     disabled={streaming}
-                    className="flex-1"
+                    className="flex-1 text-xs"
                   >
-                    {length.charAt(0).toUpperCase() + length.slice(1)} ({length === 'short' ? '30s' : length === 'medium' ? '60s' : '120s'})
+                    {length === 'short' ? '30s' : length === 'medium' ? '60s' : '120s'}
                   </Button>
                 ))}
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <Separator className="bg-slate-700" />
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-200">Demo Claims:</p>
-              <div className="grid grid-cols-1 gap-2">
-                {demoClaims.map((claim, idx) => (
+          {/* Demo Claims Card */}
+          <Card className="flex-1 min-w-xs border-[#404040] bg-[#171717]">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[#FAFAFA] text-lg">Quick Start</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                {demoClaims.slice(0, 2).map((claim, idx) => (
                   <Button
                     key={idx}
                     onClick={() => startStreaming(claim)}
                     disabled={streaming}
                     variant="outline"
-                    className="justify-start text-left h-auto whitespace-normal py-4 px-4 border-slate-600 hover:border-blue-500 dark:text-white"
+                    className="flex-1 text-xs h-auto py-2 px-2 text-left"
+                    title={claim}
                   >
-                    <span className="font-semibold mr-2">{idx + 1}.</span>
-                    <span>{claim}</span>
+                    <span className="truncate">{claim.substring(0, 20)}...</span>
                   </Button>
                 ))}
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        </div>
 
-            <Separator className="bg-slate-700" />
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-200">Custom Claim:</p>
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value={claim}
-                  onChange={(e) => setClaim(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !streaming) {
-                      startStreaming(claim);
-                    }
-                  }}
-                  placeholder="Enter your own claim..."
-                  disabled={streaming}
-                  className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-500"
-                />
-                <Button
-                  onClick={() => startStreaming(claim)}
-                  disabled={!claim.trim() || streaming}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {streaming ? 'Streaming...' : 'Stream'}
-                </Button>
-              </div>
+        {/* Custom Input Card */}
+        <Card className="mb-10 border-[#404040] bg-[#171717]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-[#FAFAFA] text-lg">Custom Claim</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                value={claim}
+                onChange={(e) => setClaim(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !streaming) {
+                    startStreaming(claim);
+                  }
+                }}
+                placeholder="Enter your own claim..."
+                disabled={streaming}
+                className="bg-[#262626] border-[#404040] text-[#FAFAFA] placeholder:text-[#737373]"
+              />
+              <Button
+                onClick={() => startStreaming(claim)}
+                disabled={!claim.trim() || streaming}
+                className="bg-[#0EA5E9] hover:bg-[#0284C7]"
+              >
+                {streaming ? 'Streaming...' : 'Stream'}
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Error Display */}
-        {error && (
-          <Card className="mb-8 border-red-900 bg-red-950">
-            <CardContent className="pt-6">
-              <p className="text-red-200">{error}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Streaming Area */}
-        <div className="grid grid-cols-3 gap-6 mb-8">
+        {/* Streaming Results Grid - Wrapping Layout */}
+        <div className="flex flex-wrap gap-4 mb-10">
           {/* Believer Column */}
-          <Card className="border-slate-700 bg-slate-900 col-span-1">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <span className="text-2xl">✓</span> Believer
+          <Card className="flex-1 min-w-sm border-[#404040] bg-[#171717] flex flex-col">
+            <CardHeader className="pb-3 border-b border-[#404040]">
+              <CardTitle className="text-[#FAFAFA] flex items-center gap-2">
+                <span className="text-xl">✓</span> Believer
               </CardTitle>
-              <CardDescription>OpenAI GPT-4</CardDescription>
+              <CardDescription className="text-[#737373] text-xs">OpenAI GPT-4</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 flex flex-col pt-3">
               <div
                 ref={believerRef}
-                className="h-64 overflow-y-auto bg-slate-800 rounded p-4 text-slate-100 text-sm leading-relaxed border border-slate-700"
+                className="flex-1 overflow-y-auto bg-[#262626] rounded p-3 text-[#E5E5E5] text-sm leading-relaxed border border-[#404040]"
               >
-                {streaming && !believerTokens && <span className="text-slate-400">Waiting for response...</span>}
+                {streaming && !believerTokens && <span className="text-[#737373]">Waiting for response...</span>}
                 {believerTokens}
               </div>
             </CardContent>
           </Card>
 
-          {/* Evidence Sidebar */}
-          <Card className="border-slate-700 bg-slate-900 col-span-1">
-            <CardHeader>
-              <CardTitle className="text-white">Evidence Tracker</CardTitle>
-              <CardDescription>
+          {/* Skeptic Column */}
+          <Card className="flex-1 min-w-sm border-[#404040] bg-[#171717] flex flex-col">
+            <CardHeader className="pb-3 border-b border-[#404040]">
+              <CardTitle className="text-[#FAFAFA] flex items-center gap-2">
+                <span className="text-xl">✗</span> Skeptic
+              </CardTitle>
+              <CardDescription className="text-[#737373] text-xs">Anthropic Claude</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col pt-3">
+              <div
+                ref={skepticRef}
+                className="flex-1 overflow-y-auto bg-[#262626] rounded p-3 text-[#E5E5E5] text-sm leading-relaxed border border-[#404040]"
+              >
+                {streaming && !skepticTokens && <span className="text-[#737373]">Waiting for response...</span>}
+                {skepticTokens}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Evidence Tracker */}
+          <Card className="flex-1 min-w-sm border-[#404040] bg-[#171717] flex flex-col">
+            <CardHeader className="pb-3 border-b border-[#404040]">
+              <CardTitle className="text-[#FAFAFA]">Evidence</CardTitle>
+              <CardDescription className="text-[#737373] text-xs">
                 {evidenceSummary 
-                  ? `${evidenceSummary.total} sources tracked`
+                  ? `${evidenceSummary.total} sources`
                   : streaming 
-                    ? 'Tracking sources...' 
-                    : 'Real-time sources'}
+                    ? 'Tracking...' 
+                    : 'Waiting for sources'}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 flex flex-col pt-3">
               {evidenceSummary && (
-                <div className="mb-3 p-3 bg-slate-800 rounded border border-slate-700">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-300">Believer: <span className="text-blue-400 font-semibold">{evidenceSummary.byRole.believer}</span></span>
-                    <span className="text-slate-300">Skeptic: <span className="text-red-400 font-semibold">{evidenceSummary.byRole.skeptic}</span></span>
+                <div className="mb-3 p-2 bg-[#262626] rounded border border-[#404040] text-xs">
+                  <div className="flex justify-between text-[#E5E5E5]">
+                    <span>Believer: <span className="text-[#0EA5E9] font-semibold">{evidenceSummary.byRole.believer}</span></span>
+                    <span>Skeptic: <span className="text-[#EF4444] font-semibold">{evidenceSummary.byRole.skeptic}</span></span>
                   </div>
                 </div>
               )}
-              <div className="space-y-3 max-h-80 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto space-y-2 min-h-xs">
                 {evidence.length === 0 ? (
-                  <p className="text-slate-400 text-sm">Waiting for evidence...</p>
+                  <p className="text-[#737373] text-xs">No evidence yet</p>
                 ) : (
                   evidence.map((ev, idx) => (
-                    <div key={idx} className={`p-3 rounded border ${getCredibilityBg(ev.credibility)}`}>
+                    <div key={idx} className={`p-2 rounded border text-xs ${getCredibilityBg(ev.credibility)}`}>
                       <div className="flex items-start justify-between mb-1">
                         <a
                           href={ev.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 text-xs truncate flex-1"
+                          className="text-[#0EA5E9] hover:text-[#7DD3FC] truncate flex-1 text-xs"
                         >
                           {ev.domain}
                         </a>
@@ -312,32 +346,10 @@ export default function StreamTestPage() {
                           {ev.credibility}%
                         </Badge>
                       </div>
-                      <p className="text-xs text-slate-300 line-clamp-2">{ev.snippet}</p>
-                      <Badge className="mt-2 text-xs bg-slate-700" variant="outline">
-                        {ev.role}
-                      </Badge>
+                      <p className="text-[#A3A3A3] line-clamp-2 text-xs">{ev.snippet}</p>
                     </div>
                   ))
                 )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Skeptic Column */}
-          <Card className="border-slate-700 bg-slate-900 col-span-1">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <span className="text-2xl">✗</span> Skeptic
-              </CardTitle>
-              <CardDescription>Anthropic Claude</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div
-                ref={skepticRef}
-                className="h-64 overflow-y-auto bg-slate-800 rounded p-4 text-slate-100 text-sm leading-relaxed border border-slate-700"
-              >
-                {streaming && !skepticTokens && <span className="text-slate-400">Waiting for response...</span>}
-                {skepticTokens}
               </div>
             </CardContent>
           </Card>
@@ -345,29 +357,29 @@ export default function StreamTestPage() {
 
         {/* Judge Verdict */}
         {judge && (
-          <Card className="border-slate-700 bg-slate-900">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <span className="text-2xl">⚖️</span> Judge Verdict
+          <Card className="border-[#404040] bg-[#171717]">
+            <CardHeader className="pb-3 border-b border-[#404040]">
+              <CardTitle className="text-[#FAFAFA] flex items-center gap-2">
+                <span className="text-xl">⚖️</span> Judge's Verdict
               </CardTitle>
-              <CardDescription>Gemini 2.0 Flash</CardDescription>
+              <CardDescription className="text-[#737373] text-xs">Gemini 2.0 Flash</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-4">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-200">Confidence Score</span>
-                <Badge className="text-lg px-3 py-1 bg-blue-900 text-blue-200">{confidence}%</Badge>
+                <span className="font-medium text-[#E5E5E5] text-sm">Confidence Score</span>
+                <Badge className="text-base px-3 py-1 bg-[#0EA5E9] text-[#0A0A0A]">{confidence}%</Badge>
               </div>
-              <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
+              <div className="w-full bg-[#262626] rounded-full h-2 overflow-hidden border border-[#404040]">
                 <div
-                  className="h-3 rounded-full bg-linear-to-r from-red-500 via-yellow-500 to-green-500 transition-all duration-500"
+                  className="h-2 rounded-full bg-linear-to-r from-[#EF4444] via-[#FBBF24] to-[#10B981] transition-all duration-500"
                   style={{ width: `${confidence}%` }}
                 ></div>
               </div>
-              <Separator className="bg-slate-700" />
-              <p className="text-slate-100 leading-relaxed">{judge}</p>
+              <p className="text-[#E5E5E5] leading-relaxed text-sm">{judge}</p>
             </CardContent>
           </Card>
         )}
+        </div>
       </div>
     </div>
   );

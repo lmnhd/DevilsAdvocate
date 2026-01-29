@@ -204,11 +204,11 @@ export default function UITestPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-1 py-1 sm:px-6 lg:px-8">
         {/* Page Header */}
-        <div className="mb-8 space-y-1">
+        <div className="mb-2 space-y-1">
           <div className="flex items-baseline gap-3">
-            <h1 className="text-4xl font-bold text-foreground">Devil's Advocate</h1>
+            <h1 className="text-2xl font-bold text-foreground">Devil's Advocate</h1>
             <Badge variant="secondary" className="text-xs">Debate Viewer</Badge>
           </div>
           <p className="text-sm text-foreground-muted">Real-time dual-perspective analysis with fact-checking</p>
@@ -230,28 +230,6 @@ export default function UITestPage() {
         <div className="mb-8">
           <DebateInput onSubmit={handleDebateStart} isLoading={debateState.isStreaming} />
         </div>
-
-        {/* Quick Debate Samples */}
-        {!debateState.isStreaming && debateState.believerTokens.length === 0 && (
-          <div className="mb-8 space-y-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Quick Start</h2>
-              <Separator className="flex-1 bg-border" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {SAMPLE_CLAIMS.map((claim, idx) => (
-                <Button
-                  key={idx}
-                  onClick={() => handleQuickDebate(claim)}
-                  variant="outline"
-                  className="h-auto py-3 px-4 text-left text-sm font-normal text-foreground hover:bg-background-secondary/50 border-border"
-                >
-                  {claim}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Main Debate Content */}
         {(debateState.isStreaming || debateState.believerTokens.length > 0) && (
@@ -316,14 +294,34 @@ export default function UITestPage() {
 
         {/* Empty State */}
         {!debateState.isStreaming && debateState.believerTokens.length === 0 && (
-          <Card className="border-border/50 bg-background-secondary/30">
+          <Card className="mt-8 border-border/50 bg-background-secondary/30">
             <div className="py-16 px-6 text-center">
               <p className="text-sm text-foreground-muted">
-                Enter a claim above or select a quick example to begin
+                Enter a claim above or select a quick example to begin a live debate
               </p>
             </div>
           </Card>
         )}
+
+        {/* Quick Debate Samples - Always at bottom */}
+        <div className="mt-12 space-y-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Quick Start Examples</h2>
+            <Separator className="flex-1 bg-border" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {SAMPLE_CLAIMS.map((claim, idx) => (
+              <Button
+                key={idx}
+                onClick={() => handleQuickDebate(claim)}
+                variant="outline"
+                className="h-auto py-3 px-4 text-left text-sm font-normal text-foreground hover:bg-background-secondary/50 border-border"
+              >
+                {claim}
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
     </main>
   );

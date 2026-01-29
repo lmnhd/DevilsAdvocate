@@ -63,17 +63,18 @@ export async function GET(request: NextRequest) {
               console.log(`[STREAM]   Tokens used: ${event.data.tokens_used || 'N/A'}`);
               console.log(`[STREAM]   Preview: ${fullContent?.substring(0, 80) || 'EMPTY'}...`);
               
-              // Extract evidence from full content first
-              const allEvidence = extractEvidenceFromToken(fullContent);
-              console.log(`[STREAM]   Evidence items found: ${allEvidence.length}`);
+              // Extract evidence from agent's evidence array
+              const agentEvidence = event.data.evidence || [];
+              console.log(`[STREAM]   Evidence items from agent: ${agentEvidence.length}`);
               
-              for (const ev of allEvidence) {
+              for (const ev of agentEvidence) {
                 try {
-                  const tracked = await tracker.trackEvidence(ev.url, ev.snippet, 'believer');
+                  if (!ev.source_url) continue;
+                  const tracked = await tracker.trackEvidence(ev.source_url, ev.snippet || '', 'believer');
                   const evidenceData = formatSSE('believer_evidence', {
                     url: tracked.url,
-                    credibility: tracked.credibility_score,
-                    snippet: tracked.snippet.substring(0, 100),
+                    credibility: tracked.credibility_score || ev.credibility_score || 50,
+                    snippet: (tracked.snippet || ev.snippet || '').substring(0, 100),
                     domain: tracked.domain,
                   });
                   controller.enqueue(encoder.encode(evidenceData));
@@ -103,17 +104,18 @@ export async function GET(request: NextRequest) {
               console.log(`[STREAM]   Tokens used: ${event.data.tokens_used || 'N/A'}`);
               console.log(`[STREAM]   Preview: ${fullContent?.substring(0, 80) || 'EMPTY'}...`);
 
-              // Extract evidence from full content first
-              const allEvidence = extractEvidenceFromToken(fullContent);
-              console.log(`[STREAM]   Evidence items found: ${allEvidence.length}`);
+              // Extract evidence from agent's evidence array
+              const agentEvidence = event.data.evidence || [];
+              console.log(`[STREAM]   Evidence items from agent: ${agentEvidence.length}`);
               
-              for (const ev of allEvidence) {
+              for (const ev of agentEvidence) {
                 try {
-                  const tracked = await tracker.trackEvidence(ev.url, ev.snippet, 'skeptic');
+                  if (!ev.source_url) continue;
+                  const tracked = await tracker.trackEvidence(ev.source_url, ev.snippet || '', 'skeptic');
                   const evidenceData = formatSSE('skeptic_evidence', {
                     url: tracked.url,
-                    credibility: tracked.credibility_score,
-                    snippet: tracked.snippet.substring(0, 100),
+                    credibility: tracked.credibility_score || ev.credibility_score || 50,
+                    snippet: (tracked.snippet || ev.snippet || '').substring(0, 100),
                     domain: tracked.domain,
                   });
                   controller.enqueue(encoder.encode(evidenceData));
@@ -143,20 +145,58 @@ export async function GET(request: NextRequest) {
 
               // Extract verdict details from judge response
               const verdictText = event.data.content;
-              const confidenceMatch = verdictText.match(/CONFIDENCE SCORE[:\s]*(\d+)/i);
-              const believerMatch = verdictText.match(/STRENGTH OF BELIEVER CASE[:\s]*(\w+)/i);
-              const skepticMatch = verdictText.match(/STRENGTH OF SKEPTIC CASE[:\s]*(\w+)/i);
+              // Try multiple verdict patterns
+              let verdictMatch = verdictText.match(/\*\*VERDICT\*\*:?\s*(.+?)(?:\n|\*\*)/i);
+              if (!verdictMatch) {
+                verdictMatch = verdictText.match(/^(.+?)(?:\n|\*\*CONFIDENCE)/im);
+              }
+              const confidenceMatch = verdictText.match(/\*\*CONFIDENCE SCORE\*\*:?\s*(\d+)/i);
+              const believerMatch = verdictText.match(/\*\*STRENGTH OF BELIEVER CASE\*\*:?\s*(\w+(?:\s+\w+)?)/i);
+              const skepticMatch = verdictText.match(/\*\*STRENGTH OF SKEPTIC CASE\*\*:?\s*(\w+(?:\s+\w+)?)/i);
+              const harmMatch = verdictText.match(/If we acted on the Believer's position and they're wrong, what harm could result\?[^\n]*?([^\n]+?)(?=If we rejected|\*\*|$)/is);
+              const opportunityMatch = verdictText.match(/If we rejected the Believer's position and they're right, what opportunity is lost\?[^\n]*?([^\n]+?)(?=\*\*|$)/is);
+              
+              // Extract key factors and gaps
+              const keyFactorsMatch = verdictText.match(/\*\*KEY EVIDENCE FACTORS\*\*:?\s*([\s\S]*?)(?=\*\*|$)/i);
+              const criticalGapsMatch = verdictText.match(/\*\*CRITICAL GAPS\*\*:?\s*([^\*]+)/i);
+              
+              const keyFactors = keyFactorsMatch 
+                ? keyFactorsMatch[1]
+                    .split('\n')
+                    .filter(line => line.trim() && !line.includes('**'))
+                    .map(line => line.replace(/^\d+\.\s*|^[-•]\s*/, '').trim())
+                    .slice(0, 3)
+                : [];
 
-              console.log(`[STREAM]   Confidence score: ${confidenceMatch?.[1] || 'PARSE_FAILED'}`);
+              const confidence = parseInt(confidenceMatch?.[1] || '50');
+              const harmLevel = harmMatch?.[1]?.toLowerCase() || 'medium';
+              const opportunityLevel = opportunityMatch?.[1]?.toLowerCase() || 'medium';
+              
+              // Calculate overall risk assessment
+              let riskAssessment: 'low' | 'medium' | 'high' = 'medium';
+              if (harmLevel === 'high' || opportunityLevel === 'high') {
+                riskAssessment = 'high';
+              } else if (harmLevel === 'low' && opportunityLevel === 'low') {
+                riskAssessment = 'low';
+              }
+
+              console.log(`[STREAM]   Verdict: ${verdictMatch?.[1] || 'PARSE_FAILED'}`);
+              console.log(`[STREAM]   Confidence score: ${confidence}`);
               console.log(`[STREAM]   Believer strength: ${believerMatch?.[1] || 'PARSE_FAILED'}`);
               console.log(`[STREAM]   Skeptic strength: ${skepticMatch?.[1] || 'PARSE_FAILED'}`);
+              console.log(`[STREAM]   Risk assessment: ${riskAssessment}`);
 
-              // Send judge verdict
+              // Send judge verdict with parsed data
               const judgeEvent = formatSSE('judge_complete', {
-                verdict: event.data.content.substring(0, 200),
-                confidence: parseInt(confidenceMatch?.[1] || '50'),
+                verdict: verdictMatch?.[1]?.trim() || 'Unable to determine verdict',
+                confidence,
+                riskAssessment,
                 believerStrength: believerMatch?.[1] || 'Moderate',
                 skepticStrength: skepticMatch?.[1] || 'Moderate',
+                harmIfWrong: harmMatch?.[1]?.trim() || '',
+                opportunityIfWrong: opportunityMatch?.[1]?.trim() || '',
+                keyFactors,
+                criticalGaps: criticalGapsMatch?.[1]?.trim() || '',
               });
               controller.enqueue(encoder.encode(judgeEvent));
               

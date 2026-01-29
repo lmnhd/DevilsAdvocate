@@ -61,7 +61,7 @@ export async function braveSearch(query: string): Promise<ToolResponse<SearchRes
       cache: 'no-store',
     }).then(r => r.json() as Promise<any>);
 
-    const results: SearchResult[] = (response.web || []).map((item: any, idx: number) => ({
+    const results: SearchResult[] = (response.web?.results || []).map((item: any, idx: number) => ({
       title: item.title,
       url: item.url,
       snippet: item.description,

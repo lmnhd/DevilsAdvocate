@@ -67,8 +67,18 @@ export function EvidencePanel({ evidence }: EvidencePanelProps) {
                         >
                           {item.domain}
                         </a>
-                        <div className="text-xs text-foreground-muted">
-                          Mentioned by: <span className="font-medium capitalize">{item.mentioned_by.replace(/_/g, ' ')}</span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                              item.mentioned_by === 'believer'
+                                ? 'bg-blue-950 text-blue-400 border border-blue-700'
+                                : item.mentioned_by === 'skeptic'
+                                ? 'bg-red-950 text-red-400 border border-red-700'
+                                : 'bg-purple-950 text-purple-400 border border-purple-700'
+                            }`}
+                          >
+                            {item.mentioned_by === 'believer' ? '✓ Believer' : item.mentioned_by === 'skeptic' ? '✗ Skeptic' : 'Both'}
+                          </span>
                         </div>
                       </div>
                       <div
