@@ -91,7 +91,6 @@ export class SkepticAgent {
 
         counterEvidenceSummary = this.formatCounterEvidence(
           factCheckResults,
-          domainInfo,
           archiveResults
         );
         
@@ -261,18 +260,7 @@ export class SkepticAgent {
     }
   }
 
-  private extractDomain(input: string): string {
-    try {
-      if (input.startsWith('http')) {
-        return new URL(input).hostname || input;
-      }
-      return input;
-    } catch {
-      return input;
-    }
-  }
-
-  private formatCounterEvidence(factCheckResults: any, domainInfo: any, archiveResults: any): string {
+  private formatCounterEvidence(factCheckResults: any, archiveResults: any): string {
     const parts: string[] = [];
 
     if (factCheckResults.data?.length > 0) {
@@ -282,10 +270,6 @@ export class SkepticAgent {
           .map((fc: any) => `- "${fc.claim}" → Rating: ${fc.rating} (${fc.publisher})`)
           .join('\n')}`
       );
-    }
-
-    if (domainInfo.data?.credibilityScore !== undefined) {
-      parts.push(`Domain Credibility: ${Math.round(domainInfo.data.credibilityScore)}%`);
     }
 
     if (archiveResults.data?.length > 0) {
