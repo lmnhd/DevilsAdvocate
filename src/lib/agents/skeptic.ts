@@ -49,10 +49,10 @@ export class SkepticAgent {
 
       try {
         // Create a counter-evidence search query
-        // For "X is Y" claims, search for "X is NOT Y" or "X is Z (opposite)"
-        const counterQuery = `NOT (${claim}) OR against ${claim} OR contrary to ${claim}`;
+        // Simple approach: search for "claim" combined with critical terms
+        const counterQuery = `"${claim}" risks concerns ethics`;
         
-        console.log(`[SKEPTIC] Searching for counter-evidence...`);
+        console.log(`[SKEPTIC] Searching for counter-evidence with query: "${counterQuery}"`);
         const [search, fc, ar] = await Promise.all([
           braveSearch(counterQuery)
             .then(result => {

@@ -62,6 +62,34 @@ export function extractEvidenceFromToken(text: string): Evidence[] {
     }
   }
 
+  // Pattern 1b: URLs in format [text](url) or (url)
+  const bracketUrlRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)|https?:\/\/\S+/gi;
+  let bracketMatch;
+  const bracketUrls: string[] = [];
+  while ((bracketMatch = bracketUrlRegex.exec(text)) !== null) {
+    if (bracketMatch[2]) {
+      // Format: [text](url)
+      bracketUrls.push(bracketMatch[2]);
+    }
+  }
+  console.log(`[EXTRACT] Pattern 1b (Bracket URLs): Found ${bracketUrls.length} additional matches`);
+  for (const url of bracketUrls) {
+    if (!urls.includes(url) && !url.includes('%20')) {
+      try {
+        const urlObj = new URL(url);
+        evidence.push({
+          url,
+          snippet: `Found in reference`,
+          domain: urlObj.hostname,
+          role: 'believer',
+        });
+        console.log(`[EXTRACT]   ✓ Added bracket URL: ${urlObj.hostname}`);
+      } catch (e) {
+        console.log(`[EXTRACT]   ✗ Failed to parse bracket URL`);
+      }
+    }
+  }
+
   // Pattern 2: Plain domain mentions (www.example.com without http://)
   const domainRegex = /(?:according to|from|at|via|see|check|visit|research from|study by|found at|published by|source:)\s+((?:www\.)?[a-z0-9-]+(?:\.[a-z]+)+)/gi;
   const domainMatches = [];
@@ -87,7 +115,7 @@ export function extractEvidenceFromToken(text: string): Evidence[] {
   }
 
   // Pattern 3: Academic citations (Author et al., Year)
-  const citationRegex = /([A-Z][a-z]+(?:\s+(?:et al\.|&\s+[A-Z][a-z]+))?,?\s+(?:19|20)\d{2})/g;
+  const citationRegex = /\b([A-Z][a-z]+(?:\s+et\s+al\.|(?:\s*&\s*[A-Z][a-z]+)+),?\s+(?:19|20)\d{2})\b/g;
   const citations = text.match(citationRegex) || [];
   console.log(`[EXTRACT] Pattern 3 (Citations): Found ${citations.length} matches`);
   if (citations.length > 0) {
