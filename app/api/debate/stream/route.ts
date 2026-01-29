@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Claim is required' }, { status: 400 });
     }
 
+    console.log(`[Stream] Starting debate for claim: "${claim}" (length: ${debateLength})`);
+
     const maxTokens = getTokensForLength(debateLength);
     const orchestrator = new DebateOrchestrator();
     const tracker = new EvidenceTracker();
@@ -45,6 +47,7 @@ export async function GET(request: NextRequest) {
           let judgeResponse: any;
 
           for await (const event of orchestrator.orchestrateStream({ claim, maxTokens })) {
+            console.log(`[Stream] Event type: ${event.type}`);
             if (event.type === 'believer_complete') {
               believerResponse = event.data;
               const fullContent = event.data.content;
@@ -99,6 +102,53 @@ export async function GET(request: NextRequest) {
                 controller.enqueue(encoder.encode(eventData));
 
                 // Simulate streaming delay
+                await new Promise((resolve) => setTimeout(resolve, 5));
+              }
+            } else if (event.type === 'judge_complete') {
+              console.log('[Stream] Judge complete, sending verdict');
+              judgeResponse = event.data;
+
+              // Extract verdict details from judge response
+              const verdictText = event.data.content;
+              const confidenceMatch = verdictText.match(/CONFIDENCE SCORE[:\s]*(\d+)/i);
+              const believerMatch = verdictText.match(/STRENGTH OF BELIEVER CASE[:\s]*(\w+)/i);
+              const skepticMatch = verdictText.match(/STRENGTH OF SKEPTIC CASE[:\s]*(\w+)/i);
+
+              // Send judge verdict
+              const judgeEvent = formatSSE('judge_complete', {
+                verdict: event.data.content.substring(0, 200),
+                confidence: parseInt(confidenceMatch?.[1] || '50'),
+                believerStrength: believerMatch?.[1] || 'Moderate',
+                skepticStrength: skepticMatch?.[1] || 'Moderate',
+              });
+              controller.enqueue(encoder.encode(judgeEvent));
+            }
+          }
+
+          // Send evidence summary
+          const allEvidence = tracker.getAllEvidence();
+          const summaryEvent = formatSSE('evidence_summary', {
+            total: allEvidence.length,
+            byRole: {
+              believer: tracker.getEvidenceByRole('believer').length,
+              skeptic: tracker.getEvidenceByRole('skeptic').length,
+            },
+            topSources: tracker
+              .getTopEvidence(5)
+              .map((e) => ({ url: e.url, credibility: e.credibility_score })),
+          });
+          controller.enqueue(encoder.encode(summaryEvent));
+
+          controller.close();
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          console.error('[Stream] Error:', errorMsg);
+          const errorEvent = formatSSE('error', { message: errorMsg });
+          controller.enqueue(encoder.encode(errorEvent));
+          controller.close();
+        }
+      },
+    });
                 await new Promise((resolve) => setTimeout(resolve, 5));
               }
             } else if (event.type === 'judge_complete') {

@@ -27,10 +27,22 @@ export function TruthGauge({ confidence, isAnimating }: TruthGaugeProps) {
   const rotation = (clampedConfidence / 100) * 180 - 90;
 
   return (
-    <div className="w-full flex flex-col items-center justify-center py-8 px-6 bg-background-secondary border border-border rounded-lg">
-      <h3 className="text-sm font-semibold text-foreground-muted mb-6 uppercase tracking-wide">
+    <motion.div 
+      className="w-full flex flex-col items-center justify-center py-8 px-6 bg-background-secondary border border-border rounded-lg"
+      animate={isAnimating ? { boxShadow: [
+        `inset 0 0 0 1px rgba(${categoryColor === '#EF4444' ? '239, 68, 68' : categoryColor === '#10B981' ? '16, 185, 129' : '251, 191, 36'}, 0.2)`,
+        `inset 0 0 20px 2px rgba(${categoryColor === '#EF4444' ? '239, 68, 68' : categoryColor === '#10B981' ? '16, 185, 129' : '251, 191, 36'}, 0.4)`,
+        `inset 0 0 0 1px rgba(${categoryColor === '#EF4444' ? '239, 68, 68' : categoryColor === '#10B981' ? '16, 185, 129' : '251, 191, 36'}, 0.2)`
+      ] } : {}}
+      transition={isAnimating ? { duration: 2, repeat: Infinity } : {}}
+    >
+      <motion.h3 
+        className="text-sm font-semibold text-foreground-muted mb-6 uppercase tracking-wide"
+        animate={isAnimating ? { opacity: [0.6, 1, 0.6] } : {}}
+        transition={isAnimating ? { duration: 1.5, repeat: Infinity } : {}}
+      >
         Confidence Gauge
-      </h3>
+      </motion.h3>
 
       {/* Gauge Container */}
       <div className="relative w-64 h-32 flex items-center justify-center">
@@ -42,6 +54,13 @@ export function TruthGauge({ confidence, isAnimating }: TruthGaugeProps) {
               <stop offset="50%" stopColor="#FBBF24" />
               <stop offset="100%" stopColor="#10B981" />
             </linearGradient>
+            <filter id="gaugeGlow">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
           </defs>
           {/* Gauge arc */}
           <path
@@ -50,6 +69,8 @@ export function TruthGauge({ confidence, isAnimating }: TruthGaugeProps) {
             stroke="url(#gaugeGradient)"
             strokeWidth="8"
             strokeLinecap="round"
+            filter="url(#gaugeGlow)"
+            opacity="0.9"
           />
           {/* Tick marks */}
           {[0, 25, 50, 75, 100].map((tick) => {
@@ -74,20 +95,31 @@ export function TruthGauge({ confidence, isAnimating }: TruthGaugeProps) {
 
         {/* Needle */}
         <motion.div
-          className="absolute w-1 h-16 bg-foreground rounded-full origin-bottom"
-          style={{ bottom: '50%' }}
+          className="absolute w-1 h-16 bg-foreground rounded-full origin-bottom shadow-lg"
+          style={{ 
+            bottom: '50%',
+            boxShadow: `0 0 10px ${categoryColor}`
+          }}
           animate={{ rotate: rotation }}
           transition={{
-            duration: isAnimating ? 0.5 : 0,
+            duration: isAnimating ? 0.8 : 0,
             ease: 'easeInOut'
           }}
         >
           {/* Needle cap */}
-          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-foreground rounded-full" />
+          <motion.div 
+            className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-foreground rounded-full"
+            animate={isAnimating ? { boxShadow: `0 0 8px ${categoryColor}` } : {}}
+            transition={isAnimating ? { duration: 1.5, repeat: Infinity } : {}}
+          />
         </motion.div>
 
         {/* Center circle */}
-        <div className="absolute w-6 h-6 bg-background-secondary border-2 border-foreground rounded-full" />
+        <motion.div 
+          className="absolute w-6 h-6 bg-background-secondary border-2 border-foreground rounded-full"
+          animate={isAnimating ? { boxShadow: `0 0 15px ${categoryColor}` } : {}}
+          transition={isAnimating ? { duration: 1.5, repeat: Infinity } : {}}
+        />
       </div>
 
       {/* Stats below gauge */}
@@ -95,14 +127,27 @@ export function TruthGauge({ confidence, isAnimating }: TruthGaugeProps) {
         <motion.div
           className="text-4xl font-bold"
           style={{ color: categoryColor }}
-          animate={{ scale: isAnimating ? 1.05 : 1 }}
+          animate={{ 
+            scale: isAnimating ? [1, 1.08, 1] : 1,
+            textShadow: isAnimating ? [
+              `0 0 0px ${categoryColor}`,
+              `0 0 20px ${categoryColor}`,
+              `0 0 0px ${categoryColor}`
+            ] : `none`
+          }}
+          transition={isAnimating ? { duration: 1.5, repeat: Infinity } : {}}
         >
           {clampedConfidence}%
         </motion.div>
-        <div className="text-sm font-semibold" style={{ color: categoryColor }}>
+        <motion.div 
+          className="text-sm font-semibold" 
+          style={{ color: categoryColor }}
+          animate={isAnimating ? { opacity: [0.8, 1, 0.8] } : {}}
+          transition={isAnimating ? { duration: 1.5, repeat: Infinity } : {}}
+        >
           {category}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }

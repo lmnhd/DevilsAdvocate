@@ -37,7 +37,7 @@ export async function braveSearch(query: string): Promise<ToolResponse<SearchRes
 
   try {
     rateLimiter.recordRequest(toolName);
-    const apiKey = process.env.BRAVE_API_KEY;
+    const apiKey = process.env.BRAVE_SEARCH_API_KEY;
     if (!apiKey) {
       return {
         data: [],
@@ -48,7 +48,7 @@ export async function braveSearch(query: string): Promise<ToolResponse<SearchRes
           resetAt: rateLimiter.getResetTime(toolName),
           limited: false,
         },
-        error: 'BRAVE_API_KEY not configured',
+        error: 'BRAVE_SEARCH_API_KEY not configured',
       };
     }
 
