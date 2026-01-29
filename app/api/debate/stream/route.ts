@@ -79,7 +79,8 @@ export async function GET(request: NextRequest) {
                   });
                   controller.enqueue(encoder.encode(evidenceData));
                 } catch (evErr) {
-                  console.warn(`[STREAM] Error tracking evidence: ${evErr instanceof Error ? evErr.message : 'unknown'}`);
+                  // Skip invalid evidence silently
+                  console.warn(`[STREAM] Skipped invalid evidence:`, evErr instanceof Error ? evErr.message : 'unknown');
                 }
               }
 
@@ -120,7 +121,8 @@ export async function GET(request: NextRequest) {
                   });
                   controller.enqueue(encoder.encode(evidenceData));
                 } catch (evErr) {
-                  console.warn(`[STREAM] Error tracking evidence: ${evErr instanceof Error ? evErr.message : 'unknown'}`);
+                  // Skip invalid evidence silently
+                  console.warn(`[STREAM] Skipped invalid evidence:`, evErr instanceof Error ? evErr.message : 'unknown');
                 }
               }
 

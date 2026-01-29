@@ -14,28 +14,70 @@ export interface Evidence {
   domain?: string;
 }
 
-export function extractEvidenceFromToken(token: string): Evidence[] {
-  const urlRegex = /https?:\/\/[^\s\],"'<>]+/g;
-  const matches = token.match(urlRegex) || [];
+export function extractEvidenceFromToken(text: string): Evidence[] {
+  const evidence: Evidence[] = [];
 
-  return matches.map((url) => {
+  // Pattern 1: Standard URLs (http/https)
+  const urlRegex = /https?:\/\/[^\s<>"{}|\\\^`\[\]]+/gi;
+  const urls = text.match(urlRegex) || [];
+
+  for (const url of urls) {
+    // Skip malformed URLs (query strings, etc.)
+    if (url.includes('%20') || url.length < 10) continue;
+    if (!url.includes('.')) continue; // Must have a TLD
+
+    // Extract snippet around URL (50 chars before/after)
+    const urlIndex = text.indexOf(url);
+    const start = Math.max(0, urlIndex - 50);
+    const end = Math.min(text.length, urlIndex + url.length + 50);
+    const snippet = text.substring(start, end).trim();
+
     try {
       const urlObj = new URL(url);
-      return {
+      evidence.push({
         url,
-        snippet: token.substring(Math.max(0, token.indexOf(url) - 50), token.indexOf(url) + url.length + 50),
+        snippet,
         domain: urlObj.hostname,
         role: 'believer', // Role determined by caller
-      };
+      });
     } catch {
-      return {
-        url,
-        snippet: token.substring(Math.max(0, token.indexOf(url) - 50), token.indexOf(url) + url.length + 50),
-        domain: 'unknown',
-        role: 'believer',
-      };
+      // Skip URLs that fail to parse
     }
-  });
+  }
+
+  // Pattern 2: Domain mentions (for when LLM cites sources without full URL)
+  const domainMentionRegex = /(?:according to|study by|research from|data from|report by)\s+([a-z0-9-]+(?:\.[a-z]+)+)/gi;
+  let match;
+  while ((match = domainMentionRegex.exec(text)) !== null) {
+    const domain = match[1];
+    const fullMatch = match[0];
+
+    // Convert domain mention to a searchable URL
+    const url = `https://${domain}`;
+    const snippet = fullMatch;
+
+    // Only add if not already present
+    if (!evidence.some((e) => e.url.includes(domain))) {
+      evidence.push({ url, snippet, domain, role: 'believer' });
+    }
+  }
+
+  // Pattern 3: Academic citations (Author et al., Year)
+  const citationRegex = /([A-Z][a-z]+(?:\s+(?:et al\.|& [A-Z][a-z]+))?,?\s+(?:19|20)\d{2})/g;
+  const citations = text.match(citationRegex) || [];
+
+  for (const citation of citations) {
+    // Create a pseudo-URL for academic citations
+    const url = `https://scholar.google.com/scholar?q=${encodeURIComponent(citation)}`;
+    evidence.push({
+      url,
+      snippet: `Academic citation: ${citation}`,
+      domain: 'scholar.google.com',
+      role: 'believer',
+    });
+  }
+
+  return evidence;
 }
 
 export async function* mergeAsyncGenerators<T>(

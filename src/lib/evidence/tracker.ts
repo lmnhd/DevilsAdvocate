@@ -23,6 +23,12 @@ export class EvidenceTracker {
     snippet: string,
     role: 'believer' | 'skeptic'
   ): Promise<TrackedEvidence> {
+    // VALIDATE URL FORMAT
+    if (!this.isValidUrl(url)) {
+      console.warn(`[EVIDENCE] Skipping invalid URL: ${url.substring(0, 50)}`);
+      throw new Error('Invalid URL format');
+    }
+
     const existing = this.evidenceMap.get(url);
 
     if (existing) {
@@ -63,55 +69,157 @@ export class EvidenceTracker {
     }
   }
 
+  private isValidUrl(url: string): boolean {
+    try {
+      // Must be valid URL
+      const urlObj = new URL(url);
+
+      // Must have http/https protocol
+      if (!['http:', 'https:'].includes(urlObj.protocol)) {
+        return false;
+      }
+
+      // Must have valid hostname with TLD
+      if (!urlObj.hostname.includes('.')) {
+        return false;
+      }
+
+      // Must not be URL-encoded query string
+      if (url.includes('%20') || url.includes('%2F')) {
+        return false;
+      }
+
+      // Must be reasonable length
+      if (url.length < 10 || url.length > 500) {
+        return false;
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private async scoreCredibility(domain: string, url: string): Promise<number> {
     if (this.credibilityCache.has(domain)) {
       return this.credibilityCache.get(domain)!;
     }
 
-    // Calculate score based on domain characteristics
-    let ageScore = this.calculateAgeScore(domain);
-    let reputationScore = this.calculateReputationScore(domain);
+    // Use reputation score only (age scoring was unreliable)
+    const reputationScore = this.calculateReputationScore(domain);
+    const totalScore = Math.min(100, Math.round(reputationScore));
 
-    const totalScore = Math.min(100, Math.round(ageScore * 0.4 + reputationScore * 0.6));
     this.credibilityCache.set(domain, totalScore);
 
     return totalScore;
   }
 
   private calculateAgeScore(domain: string): number {
-    // Simplified age scoring - in production would use WHOIS data
-    if (domain.includes('.edu')) return 40;
-    if (domain.includes('.gov')) return 38;
-
-    // Default domain age assumptions
-    const knownOldDomains = ['wikipedia.org', 'bbc.com', 'reuters.com', 'apnews.com'];
-    if (knownOldDomains.some((known) => domain.includes(known))) {
-      return 35;
-    }
-
-    return 20; // Default for unknown domains
+    // Age scoring removed - reputation is more reliable
+    return 0;
   }
 
   private calculateReputationScore(domain: string): number {
-    // Score based on domain characteristics
-    const academicDomains = ['.edu', '.ac.uk', '.ac.jp', 'scholar.', 'research.', 'ieee.', 'arxiv.'];
-    const newsDomains = [
-      'bbc.com',
+    // TIER 1: Academic & Government (85-95%)
+    const tier1Domains = [
+      '.edu',
+      '.ac.uk',
+      '.ac.jp',
+      '.gov',
+      '.gov.uk',
+      'scholar.google',
+      'ieee.org',
+      'arxiv.org',
+      'nih.gov',
+      'cdc.gov',
+      'nasa.gov',
+      'universityconsortium.edu',
+    ];
+    if (tier1Domains.some((d) => domain.includes(d))) {
+      return 90; // High credibility for academic/government
+    }
+
+    // TIER 2: Major News Organizations (75-85%)
+    const tier2Domains = [
+      'nytimes.com',
       'reuters.com',
       'apnews.com',
+      'bbc.com',
       'bbc.co.uk',
+      'wsj.com',
+      'economist.com',
+      'ft.com',
       'theguardian.com',
-      'nytimes.com',
       'washingtonpost.com',
+      'npr.org',
+      'pbs.org',
     ];
-    const governmentDomains = ['.gov', '.gov.uk', '.edu', '.mil'];
+    if (tier2Domains.some((d) => domain.includes(d))) {
+      return 80; // High-quality journalism
+    }
 
-    if (academicDomains.some((pattern) => domain.includes(pattern))) return 60;
-    if (governmentDomains.some((pattern) => domain.includes(pattern))) return 55;
-    if (newsDomains.some((pattern) => domain.includes(pattern))) return 45;
-    if (domain.includes('blog') || domain.includes('medium.com')) return 10;
+    // TIER 3: Business & Tech Publications (65-75%)
+    const tier3Domains = [
+      'forbes.com',
+      'bloomberg.com',
+      'techcrunch.com',
+      'wired.com',
+      'arstechnica.com',
+      'technologyreview.com',
+      'scientificamerican.com',
+      'nature.com',
+      'science.org',
+      'pnas.org',
+    ];
+    if (tier3Domains.some((d) => domain.includes(d))) {
+      return 70; // Reputable business/tech sources
+    }
 
-    return 25; // Neutral default
+    // TIER 4: Known Databases & Reference Sites (60-70%)
+    const tier4Domains = [
+      'wikipedia.org',
+      'britannica.com',
+      'jstor.org',
+      'pubmed.gov',
+      'researchgate.net',
+      'academia.edu',
+      'sciencedirect.com',
+    ];
+    if (tier4Domains.some((d) => domain.includes(d))) {
+      return 65; // Reference materials
+    }
+
+    // TIER 5: Established Web Publishers (50-60%)
+    const tier5Domains = [
+      'medium.com',
+      'substack.com',
+      'stackoverflow.com',
+      'github.com',
+      'youtube.com',
+      'vimeo.com',
+      'ted.com',
+    ];
+    if (tier5Domains.some((d) => domain.includes(d))) {
+      return 55; // User-generated but established platforms
+    }
+
+    // TIER 6: Social Media & Low Credibility (20-40%)
+    const tier6Domains = [
+      'reddit.com',
+      'twitter.com',
+      'x.com',
+      'facebook.com',
+      'instagram.com',
+      'tiktok.com',
+      'quora.com',
+      'yahoo.com',
+    ];
+    if (tier6Domains.some((d) => domain.includes(d))) {
+      return 30; // Social media - low baseline credibility
+    }
+
+    // DEFAULT: Unknown domains (40-50%)
+    return 45;
   }
 
   private categorizeSource(domain: string): 'academic' | 'news' | 'government' | 'social' | 'unknown' {
