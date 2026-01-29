@@ -20,102 +20,136 @@ function getTokensForLength(length: 'short' | 'medium' | 'long'): number {
 }
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
   try {
     const { searchParams } = new URL(request.url);
     const claim = searchParams.get('claim');
     const debateLength = (searchParams.get('debateLength') as 'short' | 'medium' | 'long') || 'medium';
 
+    console.log(`\n[STREAM] ========== STARTING DEBATE ==========`);
+    console.log(`[STREAM] Timestamp: ${new Date().toISOString()}`);
+    console.log(`[STREAM] Claim: "${claim}"`);
+    console.log(`[STREAM] Length: ${debateLength}`);
+
     if (!claim) {
+      console.error('[STREAM] ERROR: No claim provided');
       return NextResponse.json({ error: 'Claim is required' }, { status: 400 });
     }
 
-    console.log(`[Stream] Starting debate for claim: "${claim}" (length: ${debateLength})`);
-
     const maxTokens = getTokensForLength(debateLength);
+    console.log(`[STREAM] Max tokens: ${maxTokens}`);
+
     const orchestrator = new DebateOrchestrator();
     const tracker = new EvidenceTracker();
 
     const encoder = new TextEncoder();
-    let buffer = '';
 
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Stream results as they complete
-          let believerResponse: any;
-          let skepticResponse: any;
-          let judgeResponse: any;
+          console.log(`[STREAM] ReadableStream started, initializing orchestrator`);
 
           for await (const event of orchestrator.orchestrateStream({ claim, maxTokens })) {
-            console.log(`[Stream] Event type: ${event.type}`);
+            const eventTime = Date.now() - startTime;
+            console.log(`[STREAM] [${eventTime}ms] Event received: ${event.type}`);
+
             if (event.type === 'believer_complete') {
-              believerResponse = event.data;
+              const believerStart = Date.now();
               const fullContent = event.data.content;
+              
+              console.log(`[STREAM] BELIEVER_COMPLETE:`);
+              console.log(`[STREAM]   Provider: ${event.data.provider_used || 'unknown'}`);
+              console.log(`[STREAM]   Content length: ${fullContent?.length || 0} chars`);
+              console.log(`[STREAM]   Tokens used: ${event.data.tokens_used || 'N/A'}`);
+              console.log(`[STREAM]   Preview: ${fullContent?.substring(0, 80) || 'EMPTY'}...`);
               
               // Extract evidence from full content first
               const allEvidence = extractEvidenceFromToken(fullContent);
-              console.log(`[Believer] Found ${allEvidence.length} evidence items`);
+              console.log(`[STREAM]   Evidence items found: ${allEvidence.length}`);
               
               for (const ev of allEvidence) {
-                const tracked = await tracker.trackEvidence(ev.url, ev.snippet, 'believer');
-                const evidenceData = formatSSE('believer_evidence', {
-                  url: tracked.url,
-                  credibility: tracked.credibility_score,
-                  snippet: tracked.snippet.substring(0, 100),
-                  domain: tracked.domain,
-                });
-                controller.enqueue(encoder.encode(evidenceData));
+                try {
+                  const tracked = await tracker.trackEvidence(ev.url, ev.snippet, 'believer');
+                  const evidenceData = formatSSE('believer_evidence', {
+                    url: tracked.url,
+                    credibility: tracked.credibility_score,
+                    snippet: tracked.snippet.substring(0, 100),
+                    domain: tracked.domain,
+                  });
+                  controller.enqueue(encoder.encode(evidenceData));
+                } catch (evErr) {
+                  console.warn(`[STREAM] Error tracking evidence: ${evErr instanceof Error ? evErr.message : 'unknown'}`);
+                }
               }
 
               // Stream believer response tokens
               const believerTokens = fullContent.split(' ');
+              console.log(`[STREAM]   Streaming ${believerTokens.length} tokens to client`);
               for (const token of believerTokens) {
                 const eventData = formatSSE('believer_token', { token: token + ' ' });
                 controller.enqueue(encoder.encode(eventData));
-
-                // Simulate streaming delay
                 await new Promise((resolve) => setTimeout(resolve, 5));
               }
+              
+              console.log(`[STREAM]   ✓ Believer complete in ${Date.now() - believerStart}ms\n`);
+
             } else if (event.type === 'skeptic_complete') {
-              skepticResponse = event.data;
+              const skepticStart = Date.now();
               const fullContent = event.data.content;
               
-              console.log(`[Stream] Skeptic response length: ${fullContent?.length || 0} chars`);
+              console.log(`[STREAM] SKEPTIC_COMPLETE:`);
+              console.log(`[STREAM]   Provider: ${event.data.provider_used || 'unknown'}`);
+              console.log(`[STREAM]   Content length: ${fullContent?.length || 0} chars`);
+              console.log(`[STREAM]   Tokens used: ${event.data.tokens_used || 'N/A'}`);
+              console.log(`[STREAM]   Preview: ${fullContent?.substring(0, 80) || 'EMPTY'}...`);
 
               // Extract evidence from full content first
               const allEvidence = extractEvidenceFromToken(fullContent);
-              console.log(`[Skeptic] Found ${allEvidence.length} evidence items`);
+              console.log(`[STREAM]   Evidence items found: ${allEvidence.length}`);
               
               for (const ev of allEvidence) {
-                const tracked = await tracker.trackEvidence(ev.url, ev.snippet, 'skeptic');
-                const evidenceData = formatSSE('skeptic_evidence', {
-                  url: tracked.url,
-                  credibility: tracked.credibility_score,
-                  snippet: tracked.snippet.substring(0, 100),
-                  domain: tracked.domain,
-                });
-                controller.enqueue(encoder.encode(evidenceData));
+                try {
+                  const tracked = await tracker.trackEvidence(ev.url, ev.snippet, 'skeptic');
+                  const evidenceData = formatSSE('skeptic_evidence', {
+                    url: tracked.url,
+                    credibility: tracked.credibility_score,
+                    snippet: tracked.snippet.substring(0, 100),
+                    domain: tracked.domain,
+                  });
+                  controller.enqueue(encoder.encode(evidenceData));
+                } catch (evErr) {
+                  console.warn(`[STREAM] Error tracking evidence: ${evErr instanceof Error ? evErr.message : 'unknown'}`);
+                }
               }
 
               // Stream skeptic response tokens
               const skepticTokens = fullContent.split(' ');
-              console.log(`[Skeptic] Streaming ${skepticTokens.length} tokens`);
+              console.log(`[STREAM]   Streaming ${skepticTokens.length} tokens to client`);
               for (const token of skepticTokens) {
                 const eventData = formatSSE('skeptic_token', { token: token + ' ' });
                 controller.enqueue(encoder.encode(eventData));
-
-                // Simulate streaming delay
                 await new Promise((resolve) => setTimeout(resolve, 5));
               }
+              
+              console.log(`[STREAM]   ✓ Skeptic complete in ${Date.now() - skepticStart}ms\n`);
+
             } else if (event.type === 'judge_complete') {
-              console.log('[Stream] Judge complete, sending verdict');
-              judgeResponse = event.data;
+              const judgeStart = Date.now();
+              
+              console.log(`[STREAM] JUDGE_COMPLETE:`);
+              console.log(`[STREAM]   Provider: ${event.data.provider_used || 'unknown'}`);
+              console.log(`[STREAM]   Content length: ${event.data.content?.length || 0} chars`);
+              console.log(`[STREAM]   Tokens used: ${event.data.tokens_used || 'N/A'}`);
 
               // Extract verdict details from judge response
               const verdictText = event.data.content;
               const confidenceMatch = verdictText.match(/CONFIDENCE SCORE[:\s]*(\d+)/i);
               const believerMatch = verdictText.match(/STRENGTH OF BELIEVER CASE[:\s]*(\w+)/i);
               const skepticMatch = verdictText.match(/STRENGTH OF SKEPTIC CASE[:\s]*(\w+)/i);
+
+              console.log(`[STREAM]   Confidence score: ${confidenceMatch?.[1] || 'PARSE_FAILED'}`);
+              console.log(`[STREAM]   Believer strength: ${believerMatch?.[1] || 'PARSE_FAILED'}`);
+              console.log(`[STREAM]   Skeptic strength: ${skepticMatch?.[1] || 'PARSE_FAILED'}`);
 
               // Send judge verdict
               const judgeEvent = formatSSE('judge_complete', {
@@ -125,27 +159,54 @@ export async function GET(request: NextRequest) {
                 skepticStrength: skepticMatch?.[1] || 'Moderate',
               });
               controller.enqueue(encoder.encode(judgeEvent));
+              
+              console.log(`[STREAM]   ✓ Judge complete in ${Date.now() - judgeStart}ms\n`);
             }
           }
 
           // Send evidence summary
           const allEvidence = tracker.getAllEvidence();
+          const believerEv = tracker.getEvidenceByRole('believer');
+          const skepticEv = tracker.getEvidenceByRole('skeptic');
+          
+          console.log(`[STREAM] DEBATE_SUMMARY:`);
+          console.log(`[STREAM]   Total evidence: ${allEvidence.length}`);
+          console.log(`[STREAM]   Believer evidence: ${believerEv.length}`);
+          console.log(`[STREAM]   Skeptic evidence: ${skepticEv.length}`);
+          
+          const topEvidence = tracker.getTopEvidence(5);
+          console.log(`[STREAM]   Top 5 sources:`);
+          topEvidence.forEach((e, i) => {
+            console.log(`[STREAM]     ${i + 1}. ${e.domain} (credibility: ${e.credibility_score})`);
+          });
+          
           const summaryEvent = formatSSE('evidence_summary', {
             total: allEvidence.length,
             byRole: {
-              believer: tracker.getEvidenceByRole('believer').length,
-              skeptic: tracker.getEvidenceByRole('skeptic').length,
+              believer: believerEv.length,
+              skeptic: skepticEv.length,
             },
-            topSources: tracker
-              .getTopEvidence(5)
-              .map((e) => ({ url: e.url, credibility: e.credibility_score })),
+            topSources: topEvidence.map((e) => ({ url: e.url, credibility: e.credibility_score })),
           });
           controller.enqueue(encoder.encode(summaryEvent));
 
+          const totalDuration = Date.now() - startTime;
+          console.log(`[STREAM] ========== DEBATE COMPLETE ==========`);
+          console.log(`[STREAM] Total duration: ${totalDuration}ms`);
+          console.log(`[STREAM]\n`);
+          
           controller.close();
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          console.error('[Stream] Error:', errorMsg);
+          const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+          const duration = Date.now() - startTime;
+          
+          console.error(`\n[STREAM] ========== ERROR OCCURRED ==========`);
+          console.error(`[STREAM] Error message: ${errorMsg}`);
+          console.error(`[STREAM] Error stack: ${errorStack}`);
+          console.error(`[STREAM] Duration before error: ${duration}ms`);
+          console.error(`[STREAM] =====================================\n`);
+          
           const errorEvent = formatSSE('error', { message: errorMsg });
           controller.enqueue(encoder.encode(errorEvent));
           controller.close();

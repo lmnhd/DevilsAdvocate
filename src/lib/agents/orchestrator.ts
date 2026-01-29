@@ -40,40 +40,90 @@ export class DebateOrchestrator {
 
   async *orchestrateStream(request: DebateRequest): AsyncGenerator<StreamEvent> {
     const { claim, maxTokens = 2500 } = request;
+    const orchestrationStart = Date.now();
+
+    console.log(`[ORCHESTRATOR] ========== ORCHESTRATION START ==========`);
+    console.log(`[ORCHESTRATOR] Claim: "${claim}"`);
+    console.log(`[ORCHESTRATOR] Max tokens: ${maxTokens}`);
 
     try {
       // Run believer first and yield immediately
+      console.log(`[ORCHESTRATOR] Starting Believer agent...`);
+      const believerStart = Date.now();
       const believerResponse = await this.believer.debate({ claim, maxTokens });
+      const believerDuration = Date.now() - believerStart;
+      
+      console.log(`[ORCHESTRATOR] Believer response received in ${believerDuration}ms`);
+      console.log(`[ORCHESTRATOR]   Content length: ${believerResponse.content?.length || 0} chars`);
+      console.log(`[ORCHESTRATOR]   Provider: ${believerResponse.provider_used || 'unknown'}`);
       
       // Check if believer agent refused or failed
       if (this.isRefusalResponse(believerResponse.content)) {
-        console.warn('[Orchestrator] Believer agent refused the request, stopping early');
+        console.error(`[ORCHESTRATOR] ❌ BELIEVER REFUSED - Early stopping`);
+        console.error(`[ORCHESTRATOR]   Response: "${believerResponse.content.substring(0, 120)}"`);
         throw new Error(`Believer agent refused to engage: "${believerResponse.content.substring(0, 100)}"`);
       }
       
+      console.log(`[ORCHESTRATOR] ✓ Believer response validated`);
       yield { type: 'believer_complete', data: believerResponse };
 
       // Run skeptic and yield immediately
+      console.log(`[ORCHESTRATOR] Starting Skeptic agent...`);
+      const skepticStart = Date.now();
       const skepticResponse = await this.skeptic.debate({ claim, maxTokens });
+      const skepticDuration = Date.now() - skepticStart;
+      
+      console.log(`[ORCHESTRATOR] Skeptic response received in ${skepticDuration}ms`);
+      console.log(`[ORCHESTRATOR]   Content length: ${skepticResponse.content?.length || 0} chars`);
+      console.log(`[ORCHESTRATOR]   Provider: ${skepticResponse.provider_used || 'unknown'}`);
       
       // Check if skeptic agent refused or failed
       if (this.isRefusalResponse(skepticResponse.content)) {
-        console.warn('[Orchestrator] Skeptic agent refused the request, stopping early');
+        console.error(`[ORCHESTRATOR] ❌ SKEPTIC REFUSED - Early stopping`);
+        console.error(`[ORCHESTRATOR]   Response: "${skepticResponse.content.substring(0, 120)}"`);
         throw new Error(`Skeptic agent refused to engage: "${skepticResponse.content.substring(0, 100)}"`);
       }
       
+      console.log(`[ORCHESTRATOR] ✓ Skeptic response validated`);
       yield { type: 'skeptic_complete', data: skepticResponse };
 
       // Run judge and yield
+      console.log(`[ORCHESTRATOR] Starting Judge agent...`);
+      const judgeStart = Date.now();
       const judgeResponse = await this.judge.evaluate({
         claim,
         believerArgument: believerResponse.content,
         skepticArgument: skepticResponse.content,
       });
+      const judgeDuration = Date.now() - judgeStart;
+      
+      console.log(`[ORCHESTRATOR] Judge response received in ${judgeDuration}ms`);
+      console.log(`[ORCHESTRATOR]   Content length: ${judgeResponse.content?.length || 0} chars`);
+      console.log(`[ORCHESTRATOR]   Provider: ${judgeResponse.provider_used || 'unknown'}`);
+      console.log(`[ORCHESTRATOR] ✓ Judge response validated`);
+      
       yield { type: 'judge_complete', data: judgeResponse };
+
+      const totalDuration = Date.now() - orchestrationStart;
+      console.log(`[ORCHESTRATOR] ========== ORCHESTRATION COMPLETE ==========`);
+      console.log(`[ORCHESTRATOR] Total duration: ${totalDuration}ms`);
+      console.log(`[ORCHESTRATOR]   Believer: ${believerDuration}ms`);
+      console.log(`[ORCHESTRATOR]   Skeptic: ${skepticDuration}ms`);
+      console.log(`[ORCHESTRATOR]   Judge: ${judgeDuration}ms`);
+      console.log(`[ORCHESTRATOR]\n`);
+      
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Debate orchestration failed: ${errorMessage}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+      const duration = Date.now() - orchestrationStart;
+      
+      console.error(`[ORCHESTRATOR] ========== ORCHESTRATION ERROR ==========`);
+      console.error(`[ORCHESTRATOR] Error: ${errorMsg}`);
+      console.error(`[ORCHESTRATOR] Stack: ${errorStack}`);
+      console.error(`[ORCHESTRATOR] Duration before error: ${duration}ms`);
+      console.error(`[ORCHESTRATOR] =======================================\n`);
+      
+      throw new Error(`Debate orchestration failed: ${errorMsg}`);
     }
   }
 

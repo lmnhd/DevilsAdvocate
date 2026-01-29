@@ -25,16 +25,34 @@ export class BelieverAgent {
 
   async debate(options: BelieverOptions): Promise<AgentResponse> {
     const { claim, maxTokens = 2500 } = options;
+    const debateStart = Date.now();
+
+    console.log(`[BELIEVER] Starting debate...`);
+    console.log(`[BELIEVER]   Claim: "${claim.substring(0, 80)}..."`);
+    console.log(`[BELIEVER]   Max tokens: ${maxTokens}`);
 
     try {
       // Gather evidence using Brave Search
+      console.log(`[BELIEVER] Gathering evidence via Brave Search...`);
+      const searchStart = Date.now();
       const searchResults = await braveSearch(claim);
+      const searchDuration = Date.now() - searchStart;
+      
+      console.log(`[BELIEVER] Search completed in ${searchDuration}ms`);
+      console.log(`[BELIEVER]   Results found: ${(searchResults.data || []).length}`);
+      
       const evidenceSummary = this.formatEvidenceFromSearch(searchResults);
+      console.log(`[BELIEVER]   Evidence summary length: ${evidenceSummary.length} chars`);
 
       // Call OpenAI with provider fallback
+      console.log(`[BELIEVER] Calling AI provider...`);
+      const aiStart = Date.now();
+      
       const result = await this.providerManager.executeWithFallback(async (provider) => {
+        console.log(`[BELIEVER]   Attempting provider: ${provider.provider}`);
+        
         if (provider.provider === 'openai') {
-          return await openai.chat.completions.create({
+          const response = await openai.chat.completions.create({
             model: 'gpt-4-turbo',
             messages: [
               {
@@ -49,15 +67,27 @@ export class BelieverAgent {
             temperature: this.temperature,
             max_tokens: maxTokens,
           });
+          
+          console.log(`[BELIEVER]   ✓ OpenAI succeeded`);
+          console.log(`[BELIEVER]     Tokens used: ${response.usage?.total_tokens || 'N/A'}`);
+          console.log(`[BELIEVER]     Content length: ${response.choices[0]?.message?.content?.length || 0} chars`);
+          
+          return response;
         }
 
-        // Fallback providers would be handled here but we delegate to provider manager
         throw new Error(`Provider ${provider.provider} not configured for direct use`);
       });
 
+      const aiDuration = Date.now() - aiStart;
+      console.log(`[BELIEVER] AI call completed in ${aiDuration}ms`);
+      
       const content = result.result.choices[0]?.message?.content || '';
+      
+      console.log(`[BELIEVER] ✓ Response generated`);
+      console.log(`[BELIEVER]   Content length: ${content.length} chars`);
+      console.log(`[BELIEVER]   Preview: ${content.substring(0, 80)}...`);
 
-      return {
+      const response: AgentResponse = {
         role: 'believer',
         content,
         evidence: (searchResults.data || []).map((r: any, idx: number) => ({
@@ -73,9 +103,28 @@ export class BelieverAgent {
         provider_used: result.provider,
         tokens_used: result.result.usage?.total_tokens || 0,
       };
+      
+      const totalDuration = Date.now() - debateStart;
+      console.log(`[BELIEVER] ========== BELIEVER COMPLETE ==========`);
+      console.log(`[BELIEVER] Total duration: ${totalDuration}ms`);
+      console.log(`[BELIEVER]   Search: ${searchDuration}ms`);
+      console.log(`[BELIEVER]   AI: ${aiDuration}ms`);
+      console.log(`[BELIEVER]\n`);
+
+      return response;
+      
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Believer agent failed: ${errorMessage}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+      const duration = Date.now() - debateStart;
+      
+      console.error(`[BELIEVER] ========== BELIEVER ERROR ==========`);
+      console.error(`[BELIEVER] Error: ${errorMsg}`);
+      console.error(`[BELIEVER] Stack: ${errorStack}`);
+      console.error(`[BELIEVER] Duration before error: ${duration}ms`);
+      console.error(`[BELIEVER] ====================================\n`);
+      
+      throw new Error(`Believer agent failed: ${errorMsg}`);
     }
   }
 
