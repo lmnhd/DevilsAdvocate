@@ -359,7 +359,7 @@ export default function StreamTestPage() {
               </div>
               <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
                 <div
-                  className="h-3 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 transition-all duration-500"
+                  className="h-3 rounded-full bg-linear-to-r from-red-500 via-yellow-500 to-green-500 transition-all duration-500"
                   style={{ width: `${confidence}%` }}
                 ></div>
               </div>

@@ -220,7 +220,7 @@ export default function UITestPage() {
         {error && (
           <Card className="mb-6 border-destructive/50 bg-destructive/10">
             <div className="p-4 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
               <p className="text-sm text-foreground">{error}</p>
             </div>
           </Card>

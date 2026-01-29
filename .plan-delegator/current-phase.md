@@ -1,256 +1,233 @@
-# Phase 6 of 7: 2D Debate Viewer UI
+# Phase 7 of 7: Integration & Polish
 
 ## EXECUTE THIS PHASE NOW
 
-Build interactive React components for the debate viewer UI with split-screen layout, real-time streaming support, and evidence panel. Complete user flow from claim input to final verdict.
+Merge sandbox components into production homepage, implement debate history and save APIs, add mobile-responsive layouts, configure Vercel/Cloudflare deployment with D1 bindings, conduct end-to-end testing with real controversial claims.
 
 ---
 
-## Deliverables (6 Files)
+## Deliverables (6 Files + Configuration)
 
-1. `src/components/DebateViewer/DebateInput.tsx` - Input form with debate length selector
-2. `src/components/DebateViewer/ArgumentColumn.tsx` - Scrollable streaming argument display
-3. `src/components/DebateViewer/TruthGauge.tsx` - Visual confidence spectrum gauge
-4. `src/components/DebateViewer/JudgeVerdict.tsx` - Final verdict panel with risk assessment
-5. `src/components/DebateViewer/EvidencePanel.tsx` - Collapsible citation list with badges
-6. `app/tests/ui/page.tsx` - Full debate flow test page
+1. `app/page.tsx` - Production homepage with integrated debate viewer
+2. `app/api/debate/history/route.ts` - GET endpoint for past debates with pagination
+3. `app/api/debate/save/route.ts` - POST endpoint to persist debate results
+4. Mobile-responsive layout improvements (stack columns on <768px)
+5. `wrangler.toml` - Cloudflare D1 binding configuration
+6. `next.config.ts` - Vercel deployment configuration with D1
+7. End-to-end test suite with real controversial claims
 
 ---
 
 ## Key Requirements
 
-### UI Architecture
-- **Dual-Column Layout**: Believer (left) vs Skeptic (right) split-screen
-- **Brand Identity**: Follow design tokens from `.github/skills/brand-identity/resources/`
-- **Color Coding**: Believer (#0EA5E9), Skeptic (#EF4444), Judge (#8B5CF6)
-- **Dark Theme**: Background #0A0A0A, text #FAFAFA
-- **Tailwind CSS**: Utility-first styling, no custom CSS files
-- **Responsive**: Stack columns vertically on screens <768px
-- **Animations**: Framer Motion for gauge transitions and streaming effects
+### Production Homepage Integration
+- **Objective**: Move sandbox UI components from `/tests/ui` to production `/`
+- **Files**: Replace placeholder `app/page.tsx` with full debate viewer
+- **Components to integrate**:
+  - DebateInput (already built in Phase 6)
+  - ArgumentColumn (already built in Phase 6)
+  - TruthGauge (already built in Phase 6)
+  - JudgeVerdict (already built in Phase 6)
+  - EvidencePanel (already built in Phase 6)
+- **Layout**: Same as test page but with production-ready styling
+- **Features**:
+  - Quick-start sample claims
+  - Copy debate link functionality
+  - Stop debate button
+  - Error handling with toast notifications
+  - Loading states during streaming
 
+### API: Debate History (`/api/debate/history`)
+**Purpose**: Retrieve past debates from D1 database
 
-### Component Specifications
+**Method**: GET
 
-#### 1. DebateInput.tsx
-**Purpose**: User input form for debate initiation
+**Query Parameters**:
+- `limit` (number, default: 10) - Results per page
+- `offset` (number, default: 0) - Pagination offset
+- `sortBy` (string, default: 'created_at') - Sort field
 
-**Props**:
+**Response**:
 ```typescript
-interface DebateInputProps {
-  onSubmit: (claim: string, length: 'short' | 'medium' | 'long') => void;
-  isLoading: boolean;
+{
+  debates: Debate[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 ```
 
-**Features**:
-- Textarea input for claim (min 10 chars, max 500 chars)
-- Three buttons for debate length: Short (1000 tokens), Medium (2500), Long (5000)
-- Character counter displaying remaining characters
-- Disabled state while debate is running
-- Placeholder: "Enter a claim to debate..."
-- Submit button changes label based on debate length selection
-- Toast notification on invalid input (too short/long)
+**Implementation**:
+- Use `DebateService.listDebates()` from Phase 2
+- Return debates sorted by `created_at DESC`
+- Include pagination metadata
 
-**Styling**:
-- Input: `bg-background-secondary border-border rounded-lg`
-- Button active: `bg-accent text-foreground-primary font-semibold`
-- Button inactive: `bg-border text-foreground-muted`
+### API: Debate Save (`/api/debate/save`)
+**Purpose**: Persist completed debate results to D1 database
 
----
+**Method**: POST
 
-#### 2. ArgumentColumn.tsx
-**Purpose**: Display streaming arguments with auto-scroll
-
-**Props**:
+**Request Body**:
 ```typescript
-interface ArgumentColumnProps {
-  agent: 'believer' | 'skeptic';
-  tokens: string[];
-  isStreaming: boolean;
+{
+  claim: string;
+  believer_argument: string;
+  skeptic_argument: string;
+  judge_verdict: string;
+  confidence_score: number;
+  evidence_sources: EvidenceSource[];
+  status: 'completed';
 }
 ```
 
-**Features**:
-- Left column border: 4px solid (believer: #0EA5E9, skeptic: #EF4444)
-- Header with agent name and icon (colored badge)
-- Scrollable content area that auto-scrolls as new tokens arrive
-- Loading spinner while streaming
-- "Streaming complete" message when done
-- Glow effect while streaming: `shadow-[0_0_20px_rgba(...)]`
-- Line wrapping at container width
-- Smooth text transitions using Framer Motion opacity
-
-**Typography**:
-- Agent name: bold, colored text (`text-believer` or `text-skeptic`)
-- Arguments: body text, line height 1.5
-
----
-
-#### 3. TruthGauge.tsx
-**Purpose**: Visual confidence spectrum gauge
-
-**Props**:
+**Response**:
 ```typescript
-interface TruthGaugeProps {
-  confidence: number; // 0-100
-  isAnimating: boolean;
+{
+  id: string;
+  created_at: Date;
+  message: "Debate saved successfully"
 }
 ```
 
-**Features**:
-- Horizontal gauge from 0 (far left, red) to 100 (far right, green)
-- Animated needle using Framer Motion: `rotate: confidence * 1.8`
-- Transition: `duration: 0.5, ease: "easeInOut"`
-- Color scale:
-  - 0-33: Red (#EF4444) - "False"
-  - 34-66: Amber (#FBBF24) - "Contested"
-  - 67-100: Green (#10B981) - "True"
-- Display confidence percentage below gauge
-- Center text shows verdict category
-- Width: 200px, height: 80px
+**Implementation**:
+- Use `DebateService.createDebate()` from Phase 2
+- Validate all required fields
+- Return debate ID for sharing/linking
 
----
+### Mobile-Responsive Layouts
+- **Breakpoint**: 768px (Tailwind `md:` prefix)
+- **Desktop** (≥768px):
+  - Dual columns side-by-side (ArgumentColumn)
+  - Evidence panel in sidebar
+  - Truth gauge horizontal
+- **Mobile** (<768px):
+  - Stack columns vertically
+  - Evidence panel collapsible
+  - Truth gauge compact
+  - Buttons full-width
 
-#### 4. JudgeVerdict.tsx
-**Purpose**: Final verdict panel with assessment
+### Deployment Configuration
 
-**Props**:
+#### Cloudflare D1 (`wrangler.toml`)
+**Existing Configuration** (from Phase 2):
+```toml
+name = "devilsadvocate"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "devilsadvocate-db"
+database_id = "devilsadvocate-db"
+
+[env.development]
+vars = { ENVIRONMENT = "development" }
+```
+
+**Action Required**: Verify D1 binding is correct, no changes needed unless database_id needs actual UUID from `wrangler d1 list`.
+
+#### Next.js Configuration (`next.config.ts`)
+**Add D1 Support for Vercel Deployment**:
+
 ```typescript
-interface JudgeVerdictProps {
-  verdict: string;
-  confidence: number;
-  riskAssessment: 'low' | 'medium' | 'high';
-}
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
+  // Enable Edge Runtime for streaming API
+  // Cloudflare D1 bindings for local dev with wrangler
+  env: {
+    DATABASE_URL: process.env.DATABASE_URL || '',
+  },
+};
+
+export default nextConfig;
 ```
 
-**Features**:
-- Header: "JUDGE VERDICT" in judge color (#8B5CF6)
-- Three-part layout:
-  1. Verdict statement (italics, large font)
-  2. Confidence gauge (see TruthGauge component)
-  3. Risk assessment badge (colored by risk level)
-- Risk badge colors:
-  - Low: Green (#10B981)
-  - Medium: Amber (#FBBF24)
-  - High: Red (#EF4444)
-- Background: `bg-background-secondary border-l-4 border-judge`
-- Padding: 16px, rounded corners
-- Display verdict only after judge completes (not during streaming)
+**Note**: For Vercel deployment with D1, you'll need to:
+1. Use Vercel's Cloudflare integration OR
+2. Migrate to Vercel Postgres (if D1 not supported)
+3. For MVP, keep D1 for local dev, add conditional logic for production
 
----
+### End-to-End Testing
 
-#### 5. EvidencePanel.tsx
-**Purpose**: Collapsible citation list with credibility
+**Test Claims** (real controversial topics):
+1. "Vaccines cause autism"
+2. "Climate change is a hoax"
+3. "The Earth is flat"
+4. "5G towers cause COVID-19"
+5. "The moon landing was faked"
 
-**Props**:
-```typescript
-interface EvidencePanelProps {
-  evidence: TrackedEvidence[];
-}
-```
+**Test Flow**:
+1. Enter claim on homepage
+2. Select debate length (short/medium/long)
+3. Start debate → verify streaming works
+4. Watch dual columns populate in real-time
+5. Verify evidence panel updates as URLs are mentioned
+6. Confirm judge verdict displays after streaming completes
+7. Test "Copy Debate Link" button
+8. Test "Save Debate" functionality (persists to D1)
+9. Navigate to /api/debate/history → verify debate appears
+10. Test on mobile viewport (<768px) → verify responsive stacking
 
-**Features**:
-- Collapsible section with toggle button
-- Header: "EVIDENCE SOURCES" with count badge
-- Sorted by credibility score descending
-- Each evidence item shows:
-  - Domain name with favicon (if available)
-  - Credibility score with color-coded badge:
-    - 🟢 (>70): `bg-success`
-    - 🟡 (40-70): `bg-accent`
-    - 🔴 (<40): `bg-destructive`
-  - Role mentioned: "Believer" / "Skeptic" / "Both"
-  - Clickable URL that opens in new tab
-  - Snippet preview (truncated to 2 lines)
-- Max height when expanded: 300px with scroll
-- Empty state: "No evidence tracked during debate"
-
-**URL Styling**:
-```
-domain.com
-├─ Credibility: 85 🟢 (believer)
-├─ "This study shows..."
-└─ [Visit Source]
-```
-
----
-
-#### 6. app/tests/ui/page.tsx
-**Purpose**: Complete debate flow demonstration
-
-**Features**:
-- Import all 5 components above
-- Layout: Input section → Dual columns → Gauge → Verdict → Evidence
-- Debate length selector visible and functional
-- Sample claims available (1-click debate):
-  - "Climate change is primarily caused by human activity"
-  - "Artificial Intelligence will replace human workers"
-  - "Social media is harmful to mental health"
-- Real `/api/debate/stream` endpoint integration:
-  - Use `EventSource` API to connect
-  - Parse all SSE events (believer_token, skeptic_token, evidence, verdict)
-  - Append tokens to respective columns
-  - Update evidence panel in real-time
-  - Display final verdict when judge_complete arrives
-- "Copy Debate Link" button (generates shareable URL)
-- "Stop Debate" button to cancel streaming
-- Loading skeleton while waiting for first token
-- Error handling with toast notifications
-- Responsive grid: `grid grid-cols-2 gap-4` on desktop, `grid-cols-1` on mobile
+**Success Criteria**:
+- [ ] All 5 test claims complete successfully
+- [ ] No hallucinated evidence sources (all URLs must be real)
+- [ ] Evidence credibility scores display correctly
+- [ ] Mobile layout stacks properly
+- [ ] Debate save/history works
 
 ---
 
 ## Implementation Guidelines
 
-### Styling (Tailwind CSS)
-- NEVER create custom CSS files
-- Use design tokens from brand identity:
-  - Colors: `text-believer`, `bg-skeptic`, `border-judge`
-  - Spacing: Use multiples of 4px (p-4, gap-4, etc.)
-  - Shadows: `shadow-[0_0_20px_rgba(14,165,233,0.5)]` for glows
-- Dark background: `bg-background` = #0A0A0A
-- Text: `text-foreground` = #FAFAFA
+### Homepage Integration (`app/page.tsx`)
+**Strategy**: Copy structure from `app/tests/ui/page.tsx` and adapt for production
 
-### Animation (Framer Motion)
-- Auto-scroll: Use `useEffect` to scroll to bottom on new tokens
-- Gauge rotation: `animate={{ rotate: confidence * 1.8 }}`
-- Opacity fade: `initial={{ opacity: 0 }}` → `animate={{ opacity: 1 }}`
-- Duration: 300ms for token transitions, 500ms for gauge
+**Key Changes**:
+- Remove "Test Page" header/badge
+- Add hero section with project description
+- Integrate "Recent Debates" section (fetch from `/api/debate/history`)
+- Add SEO meta tags
+- Production error handling (no console logs)
 
-### TypeScript
-- All components must have explicit TypeScript props interfaces
-- Import `TrackedEvidence` from `src/lib/evidence/tracker.ts`
-- Use `'use client'` directive (client component)
-- No `any` types
+### API Routes
+**Error Handling**: Return proper HTTP status codes
+- 200: Success
+- 400: Bad request (missing/invalid parameters)
+- 500: Server error
 
-### Mobile Responsiveness
-- Breakpoint 768px: Stack columns vertically
-- Reduce font sizes on mobile by 10%
-- Debate input full width on mobile
-- Evidence panel collapses by default on mobile
+**Validation**: Use Zod schemas for request/response validation
+
+### Styling Consistency
+- Follow brand identity skill for colors
+- Use Tailwind CSS (no custom CSS)
+- Maintain dark theme (#0A0A0A background)
+- Ensure accessibility (proper contrast ratios)
 
 ---
 
 ## Success Criteria
 
-- ✅ All 6 files created
-- ✅ All files under 500 lines
-- ✅ TypeScript compiles without errors
-- ✅ No `any` types used
-- ✅ All components export properly from barrel export
-- ✅ Test page integrates with `/api/debate/stream` successfully
-- ✅ Real-time token streaming displays correctly
-- ✅ Evidence panel updates as URLs are extracted
-- ✅ Judge verdict displays after streaming completes
-- ✅ Mobile layout stacks correctly at <768px
-- ✅ Auto-scroll works for argument columns
-- ✅ Framer Motion animations execute smoothly
-- ✅ No custom CSS files created
-- ✅ All brand identity colors applied correctly
+- [x] Production homepage at `/` with integrated debate viewer
+- [x] All Phase 6 components working in production context
+- [x] `/api/debate/history` returns paginated debates
+- [x] `/api/debate/save` persists debates to D1
+- [x] Mobile layout stacks correctly at <768px breakpoint
+- [x] Deployment configuration complete (wrangler.toml + next.config.ts)
+- [x] End-to-end tests pass for all 5 controversial claims
+- [x] No hallucinated evidence sources (all URLs verifiable)
+- [x] TypeScript compiles without errors
+- [x] All files follow project standards (no `any` types, <500 lines)
+- [x] Git checkpoint created: "phase 7 complete: integration & polish"
 
-## Estimated Time: 3 days
+## Estimated Time: 2 days
 
 ---
 
-Ready to execute Phase 6: 2D Debate Viewer UI
+Ready to execute Phase 7: Integration & Polish
 
