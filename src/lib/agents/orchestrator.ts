@@ -22,6 +22,11 @@ export interface DebateResult {
   };
 }
 
+export interface StreamEvent {
+  type: 'believer_complete' | 'skeptic_complete' | 'judge_complete';
+  data: AgentResponse;
+}
+
 export class DebateOrchestrator {
   private believer: BelieverAgent;
   private skeptic: SkepticAgent;
@@ -31,6 +36,31 @@ export class DebateOrchestrator {
     this.believer = new BelieverAgent(0.7);
     this.skeptic = new SkepticAgent(0.8);
     this.judge = new JudgeAgent(0.3);
+  }
+
+  async *orchestrateStream(request: DebateRequest): AsyncGenerator<StreamEvent> {
+    const { claim, maxTokens = 2500 } = request;
+
+    try {
+      // Run believer first and yield immediately
+      const believerResponse = await this.believer.debate({ claim, maxTokens });
+      yield { type: 'believer_complete', data: believerResponse };
+
+      // Run skeptic and yield immediately
+      const skepticResponse = await this.skeptic.debate({ claim, maxTokens });
+      yield { type: 'skeptic_complete', data: skepticResponse };
+
+      // Run judge and yield
+      const judgeResponse = await this.judge.evaluate({
+        claim,
+        believerArgument: believerResponse.content,
+        skepticArgument: skepticResponse.content,
+      });
+      yield { type: 'judge_complete', data: judgeResponse };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Debate orchestration failed: ${errorMessage}`);
+    }
   }
 
   async orchestrate(request: DebateRequest): Promise<DebateResult> {

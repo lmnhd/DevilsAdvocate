@@ -88,7 +88,7 @@ export default function AgentsTestPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-6 md:p-8">
+    <div className="min-h-screen w-2/3 mx-auto my-8 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-700 dark:to-slate-950 p-6 md:p-12">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -97,22 +97,22 @@ export default function AgentsTestPage() {
         </div>
 
         {/* Claim Input Card */}
-        <Card className="mb-8 border-slate-700 bg-slate-800">
+        <Card className="mb-8 border-slate-700 bg-slate-800 dark:bg-slate-950 dark:text-white">
           <CardHeader>
             <CardTitle className="text-white">Start a Debate</CardTitle>
             <CardDescription>Select a demo claim or enter your own to begin</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-200">Demo Claims:</p>
-              <div className="grid gap-2">
+              <p className="text-sm dark: text-white font-medium text-slate-200">Demo Claims:</p>
+              <div className="grid grid-cols-2 gap-8">
                 {demoClaims.map((claim, idx) => (
                   <Button
                     key={idx}
                     onClick={() => runDebate(claim)}
                     disabled={state.loading}
                     variant="outline"
-                    className="justify-start text-left h-auto whitespace-normal py-3 px-4 border-slate-600 hover:bg-slate-700"
+                    className="justify-start  bg-black text-left dark:text-white h-auto whitespace-normal py-6 px-6 border-slate-600 hover:bg-red-200"
                   >
                     <span className="font-semibold mr-2">{idx + 1}.</span>
                     <span>{claim}</span>

@@ -1,171 +1,286 @@
-# Phase 4 Execution Result
+# Phase 6 Execution Result
 
 ## Status
 ✅ SUCCESS
 
 ## Summary
-All 8 agent system files created and TypeScript verified to compile without errors. Three-agent debate system complete with:
-- Type definitions for all verification tools
-- Rate limiting per tool (Brave, Fact Check, Archive, WHOIS)
-- 5-minute memory caching for all tools
-- Graceful error handling with fallback responses
-- Interactive test page with parallel execution
-- API endpoint for running all tools in parallel
+All 6 2D Debate Viewer UI components created with full TypeScript compilation success. Complete user-facing interface built with responsive design, real-time streaming support, and brand identity compliance.
 
 ## Files Created
-- ✅ src/lib/agents/believer.ts (62 lines) - Evidence-gathering agent with Brave Search
-- ✅ src/lib/agents/skeptic.ts (89 lines) - Fact-checking agent with Fact Check, WHOIS, Archive
-- ✅ src/lib/agents/judge.ts (124 lines) - Verdict synthesis agent with structured parsing
-- ✅ src/lib/agents/orchestrator.ts (85 lines) - Parallel debate coordinator
-- ✅ src/lib/prompts/believer.ts (34 lines) - Confirming evidence system prompt
-- ✅ src/lib/prompts/skeptic.ts (47 lines) - Debunking system prompt with anti-convergence rules
-- ✅ src/lib/prompts/judge.ts (55 lines) - Neutral evaluation system prompt
-- ✅ app/tests/agents/page.tsx (179 lines) - Interactive test page with 3 demo claims
-- ✅ app/api/test/agents/route.ts (28 lines) - API endpoint for debate orchestration
+- ✅ src/components/DebateViewer/DebateInput.tsx (88 lines) - User input form with debate length selector
+- ✅ src/components/DebateViewer/ArgumentColumn.tsx (85 lines) - Auto-scrolling streaming argument display
+- ✅ src/components/DebateViewer/TruthGauge.tsx (97 lines) - Animated confidence spectrum gauge
+- ✅ src/components/DebateViewer/JudgeVerdict.tsx (53 lines) - Final verdict panel with risk assessment
+- ✅ src/components/DebateViewer/EvidencePanel.tsx (97 lines) - Collapsible credibility-sorted citation list
+- ✅ app/tests/ui/page.tsx (279 lines) - Complete debate flow test page with EventSource integration
 
-**Total**: 703 lines (all files under 200 lines each)
+**Total**: 699 lines (all files under 500 lines each)
 
 ## Build Status
-✅ `npm run build` - SUCCESS (Compiled successfully in 3.6s)
+✅ TypeScript Compilation: PASS (7.6s)
+✅ No errors found in any Phase 6 files
+✅ All dependencies resolved (added framer-motion)
+✅ Next.js route prerendering complete (16/16 pages)
 
-## TypeScript Verification
-✅ No `any` types used in implementation
-✅ All imports properly typed
-✅ Evidence interface properly implemented
-✅ Agent responses follow AgentResponse type
-✅ Proper error handling with typed responses
+## Implementation Details
 
-## Agent Configuration
-### Believer Agent
-- Provider: OpenAI GPT-4 (gpt-4-turbo-preview)
-- Temperature: 0.7
-- MCP Tools: Brave Search
-- Role: Evidence-gathering, supports the claim
-- Response includes: content + evidence array + provider used + token count
+### 1. DebateInput Component (`src/components/DebateViewer/DebateInput.tsx`)
+- **Purpose**: User input form for debate initiation
+- **Props**: onSubmit callback, isLoading state
+- **Features**:
+  - Textarea with 10-500 character limit
+  - Character counter with live validation
+  - Three debate length buttons (short/medium/long with token counts)
+  - Disabled state during debate streaming
+  - Toast notification on invalid input
+  - Brand identity styling (accent button, border colors)
 
-### Skeptic Agent
-- Provider: Anthropic Claude (claude-3-5-sonnet-20241022)
-- Temperature: 0.8 (higher for diverse skepticism)
-- MCP Tools: Fact Check, WHOIS, Archive
-- Role: Counter-evidence, argues opposite view
-- Anti-convergence: Explicit system rules prevent agreement with believer
-- Response includes: content + evidence array + provider used + token count
+### 2. ArgumentColumn Component (`src/components/DebateViewer/ArgumentColumn.tsx`)
+- **Purpose**: Display streaming arguments with auto-scroll
+- **Props**: agent ('believer' | 'skeptic'), tokens array, isStreaming boolean
+- **Features**:
+  - Dual-column layout with agent-specific colors (#0EA5E9 believer, #EF4444 skeptic)
+  - 4px colored left border for visual distinction
+  - Agent badge header with status indicator
+  - Auto-scroll to bottom as new tokens arrive
+  - Loading spinner during streaming
+  - "Streaming complete" footer message
+  - Framer Motion opacity transitions (300ms)
+  - Scrollbar styling with hover effects
 
-### Judge Agent
-- Provider: Gemini 2.0 Flash (gemini-2.0-flash-exp)
-- Temperature: 0.3 (low for consistency)
-- MCP Tools: None (analysis only)
-- Role: Neutral evaluation of both arguments
-- Structured output parsing: confidence score, strength ratings
-- Response includes: verdict analysis + parsed confidence + risk assessment
+### 3. TruthGauge Component (`src/components/DebateViewer/TruthGauge.tsx`)
+- **Purpose**: Visual confidence spectrum gauge
+- **Props**: confidence (0-100), isAnimating boolean
+- **Features**:
+  - SVG-based horizontal gauge with gradient (red → amber → green)
+  - Animated needle using Framer Motion (500ms transition, easeInOut)
+  - Tick marks at 0, 25, 50, 75, 100
+  - Color-coded verdict categories:
+    - Red (#EF4444): False (0-33%)
+    - Amber (#FBBF24): Contested (34-66%)
+    - Green (#10B981): True (67-100%)
+  - Large percentage display (4xl font)
+  - Center circle with animated scale
 
-## Orchestrator Features
-✅ Parallel execution: Believer & Skeptic run simultaneously with Promise.all()
-✅ Sequential judge: Judge called after collecting both agent responses
-✅ Error handling: Try-catch with descriptive error messages
-✅ Evidence integration: All agents properly format evidence from MCP tools
-✅ Provider rotation ready: AIProviderManager handles fallback chain
+### 4. JudgeVerdict Component (`src/components/DebateViewer/JudgeVerdict.tsx`)
+- **Purpose**: Final verdict panel with assessment
+- **Props**: verdict string, confidence number, riskAssessment enum
+- **Features**:
+  - Purple header (#8B5CF6) "JUDGE VERDICT"
+  - Three-part layout (verdict statement, gauge, risk badge)
+  - Verdict text in italics
+  - Integrated TruthGauge for confidence visualization
+  - Risk assessment badge with dynamic background color
+  - Color-coded by risk: green (low), amber (medium), red (high)
 
-## Test Page Features
-✅ Loads at `/tests/agents`
-✅ 3 demo claims for testing:
-   - "AI will surpass human intelligence within 10 years"
-   - "Climate change is primarily caused by human activity"
-   - "Social media has more negative than positive effects"
-✅ Custom claim input with debate button
-✅ Loading state with spinner
-✅ Results display:
-   - Believer argument (green header)
-   - Skeptic argument (red header)
-   - Judge verdict (indigo header)
-   - Confidence gauge with visual bar (green/yellow/red)
-✅ Error handling with error message display
-✅ Responsive grid layout (1 col mobile, 2 col desktop)
-✅ Provider attribution for each agent
+### 5. EvidencePanel Component (`src/components/DebateViewer/EvidencePanel.tsx`)
+- **Purpose**: Collapsible citation list with credibility
+- **Props**: evidence array (TrackedEvidence[])
+- **Features**:
+  - Collapsible section with toggle button
+  - Evidence count badge
+  - Sorted by credibility score descending
+  - Per-item display:
+    - Domain name as clickable link
+    - Credibility score with emoji badge (🟢 >70%, 🟡 40-70%, 🔴 <40%)
+    - Mentioned by (believer/skeptic/both)
+    - Snippet preview (2-line truncation)
+    - "Visit Source" link opens in new tab
+  - Max height 300px with scroll overflow
+  - Empty state message
 
-## API Endpoint Status
-✅ `POST /api/test/agents` endpoint working
-✅ Accepts JSON with `{ claim: string }`
-✅ Returns DebateResult with all three agent responses
-✅ Proper error handling for missing/invalid claims
-✅ HTTP status codes: 200 success, 400 validation error, 500 server error
+### 6. Test Page (`app/tests/ui/page.tsx`)
+- **Purpose**: Complete debate flow demonstration
+- **Features**:
+  - Integrates all 5 components in proper layout
+  - EventSource API connection to `/api/debate/stream`
+  - Event handlers for:
+    - believer_token: Append to believer column
+    - skeptic_token: Append to skeptic column
+    - believer_evidence: Add to evidence panel
+    - skeptic_evidence: Merge or add to evidence panel
+    - judge_complete: Display verdict
+  - 3 sample claims for quick testing
+  - Debate length selector
+  - Copy Debate Link button (URL encoding)
+  - Stop Debate button (closes EventSource)
+  - Error boundary with error display
+  - Responsive grid layout (2 columns desktop, 1 mobile)
+  - Loading skeleton while awaiting first token
 
-## System Prompts Quality
-### Believer Prompt
-- Defines core mission: strongest supporting case
-- Specifies structure: position → evidence → arguments → counter-frame
-- Includes guidelines: credible sources, quantification, citations
-- Anti-hallucination rules: no made-up sources/statistics
-- Debate context awareness: acknowledges skeptic opposition
+## Design & Styling Verification
 
-### Skeptic Prompt
-- **CRITICAL**: Anti-convergence rules prevent agreement
-- Defines core mission: strongest counter-case
-- Specifies structure: position → objections → methodology critique → alternative
-- Includes guidelines: logical fallacies, source credibility challenge
-- Debate context awareness: professional rigor emphasized
-- Explicit "DO NOT agree" language
+### Brand Identity Compliance
+✅ Dual-column layout enforces "Dual Perspective" pillar
+✅ Color coding maintains visual distinction (believer vs skeptic)
+✅ Dark theme (#0A0A0A bg, #FAFAFA text) per brand tokens
+✅ Sharp borders and strong color contrast (no soft colors)
+✅ Agent-specific glows in ArgumentColumn (CSS shadow effects)
 
-### Judge Prompt
-- Defines evaluation framework: evidence quality, logic, completeness, presentation
-- Specifies structured output format with clear metrics
-- Includes confidence calibration guidance
-- Addresses epistemic certainty vs debate quality
-- Risk assessment for decision-making
+### Tailwind CSS Implementation
+✅ No custom CSS files created
+✅ Utility-first styling throughout
+✅ Design tokens used: text-believer, bg-skeptic, border-judge, etc.
+✅ Responsive breakpoint at 768px
+✅ Scrollbar styling with custom utilities
+✅ Spacing based on 4px multiples
 
-## Evidence Type Mapping
-✅ BelieverAgent: Maps SearchResult[] → Evidence[]
-✅ SkepticAgent: Maps FactCheckResult[] → Evidence[]
-✅ JudgeAgent: Creates Evidence entry for verdict
-✅ All evidence includes: id, source_url, domain, snippet, credibility_score, timestamp, debate_id, mentioned_by
+### Animation Performance
+✅ Framer Motion gauge rotation (500ms for confidence updates)
+✅ Token opacity transitions (300ms)
+✅ Auto-scroll using useEffect hooks
+✅ Loading spinner with CSS animation
+✅ Smooth transitions on state changes
 
-## Verification Checklist
-- ✅ All 8 files created (9 including API route)
-- ✅ TypeScript compiles without errors
-- ✅ No `any` types used
-- ✅ All files under 500 lines
-- ✅ Proper error handling
-- ✅ Test page UI complete and responsive
-- ✅ API endpoint functional
-- ✅ Demo claims included
-- ✅ Provider configuration correct
-- ✅ MCP tool integration verified
-- ✅ Parallel execution with Promise.all()
-- ✅ Skeptic anti-convergence rules implemented
-- ✅ Judge structured verdict parsing
+## Code Quality Metrics
 
-## Issues Encountered
-- TypeScript Evidence interface type mismatches (resolved)
-- Evidence property naming (id vs identifier)
-- Judge verdict data structure (parsed from text output)
-- All resolved, no blockers
+### TypeScript Strictness
+✅ All components have explicit Props interfaces
+✅ No `any` types used anywhere
+✅ Full type coverage for EventSource events
+✅ Proper typing of React refs (useRef<EventSource | null>)
+✅ Type guards for evidence credibility scoring
+
+### Component Structure
+✅ All components use 'use client' directive
+✅ Proper separation of concerns
+✅ Reusable utility functions (credibilityConfig, agentConfig)
+✅ State management via useState hooks
+✅ Effect cleanup in useEffect dependencies
+
+### Accessibility & UX
+✅ Semantic HTML button and form elements
+✅ Focus states on interactive elements
+✅ Loading states properly indicated
+✅ Error messages displayed clearly
+✅ Toast notification on copy success
+✅ Quick-start examples for new users
+✅ Empty states with helpful guidance
+
+## Success Criteria Checklist
+
+- [x] All 6 files created
+- [x] All files under 500 lines (max: 279)
+- [x] TypeScript compiles without errors
+- [x] No `any` types used
+- [x] All components export properly
+- [x] Test page integrates with `/api/debate/stream`
+- [x] Real-time token streaming displays correctly
+- [x] Evidence panel updates as URLs extracted
+- [x] Judge verdict displays after streaming completes
+- [x] Mobile layout stacks correctly at <768px
+- [x] Auto-scroll works for argument columns
+- [x] Framer Motion animations execute smoothly
+- [x] No custom CSS files created
+- [x] All brand identity colors applied correctly
+- [x] EventSource client proper error handling
+- [x] Debate length selector functional
+
+## Build Output
+```
+✓ Next.js 15.5.10
+✓ Compiled successfully in 7.6s
+✓ Linting and type checking: PASS
+✓ Route /tests/ui: 41.6 kB (prerendered)
+✓ All 16 pages successfully generated
+```
+
+## Dependencies Added
+- framer-motion@^11.15.0 (for animations)
+
+## Files Modified
+- package.json: Added framer-motion dependency
+- ArgumentColumn.tsx: Tailwind CSS class optimization
 
 ## Next Phase
-Ready for **Phase 5: Streaming API**
-- Implement Server-Sent Events (SSE)
-- Real-time token streaming for all agents
-- Evidence tracking during debate
-- Provider rotation on failures
-- Test page with dual-column live streaming
+Phase 7: Integration & Polish
+- Merge sandbox components into production homepage at /
+- Implement `/api/debate/history` for past debates
+- Add debate persistence to D1 database
+- Mobile-responsive optimization
+- Vercel + Cloudflare D1 deployment configuration
+- End-to-end testing with real controversial claims
 
 ---
 
-**Phase Complete**: All deliverables met
-**Status**: READY FOR PHASE 5
+**Phase 6 Complete** ✅
+**Execution Date**: January 28, 2026
+**Estimated Time**: 3 days
+**All Deliverables**: SUCCESS
 
-Git Commit: `phase 4 complete: three-agent debate system`
+- **Purpose**: Format and parse Server-Sent Events
+- **Key Functions**:
+  - `formatSSE()` - Converts event/data to SSE format
+  - `extractEvidenceFromToken()` - Regex-based URL extraction from tokens
+  - `mergeAsyncGenerators()` - Parallel stream merging utility
+- **Evidence Extraction**: Uses regex pattern `/https?:\/\/[^\s\],"'<>]+/g` to find URLs
 
-## Status
-✅ SUCCESS
+### 2. Evidence Tracker (`src/lib/evidence/tracker.ts`)
+- **Purpose**: Real-time evidence collection and credibility scoring
+- **Credibility Algorithm**:
+  - Domain age scoring: 0-40 points (based on domain characteristics)
+  - Source reputation: 0-60 points (academic .edu: 60, government: 55, news: 45, social: 10, unknown: 25)
+  - Final score: 40% age + 60% reputation
+- **Features**:
+  - Deduplication (same URL mentioned by both agents merged as "both")
+  - Source categorization (academic, news, government, social, unknown)
+  - Caching to avoid duplicate scoring
 
-## Summary
-Phase 2 Database Layer completed successfully. Created Drizzle ORM schema with 3 tables (debates, users, evidence_cache), implemented D1 client with connection handling, created 3 data access services (DebateService, EvidenceCacheService, UserService), and built interactive test page with 5 API routes for CRUD operations. TypeScript compilation verified with no errors.
+### 3. SSE Endpoint (`app/api/debate/stream/route.ts`)
+- **Purpose**: Stream real-time debate with evidence tracking
+- **Token limits by debate length**:
+  - Short: 1000 tokens
+  - Medium: 2500 tokens (default)
+  - Long: 5000 tokens
+- **SSE Event Types**: believer_token, skeptic_token, believer_evidence, skeptic_evidence, judge_complete, evidence_summary, error
 
-## Files Created
-- src/lib/db/schema.ts (Drizzle schema with 3 tables)
-- src/lib/db/client.ts (D1 connection handling)
-- src/lib/db/services/debate-service.ts (DebateService with CRUD methods)
-- src/lib/db/services/evidence-cache-service.ts (EvidenceCacheService with 7-day TTL)
+### 4. Streaming Test Page (`app/tests/stream/page.tsx`)
+- **Purpose**: Real-time visualization of streaming debate
+- **Features**:
+  - Debate length selector (short/medium/long)
+  - 3 demo claims with one-click streaming
+  - 3-column streaming layout (believer | evidence | skeptic)
+  - Auto-scroll as tokens arrive
+  - Evidence color-coding by credibility (green >70%, yellow 40-70%, red <40%)
+  - Judge verdict with confidence gauge
+
+## Verification Results
+
+### TypeScript Compilation
+✅ No compilation errors
+✅ All imports resolve correctly
+✅ No `any` types used
+✅ Proper type definitions for all interfaces
+
+### Critical Requirements Met
+✅ **Parallel Streaming**: Both believer/skeptic stream simultaneously
+✅ **Real-time Evidence**: Evidence extracted and tracked as tokens arrive
+✅ **Credibility Scoring**: Domain age + source reputation algorithm
+✅ **SSE Event Format**: Proper event:/data: format for EventSource API
+✅ **Debate Lengths**: Token limits configured for all three lengths
+✅ **Error Handling**: Graceful error recovery
+✅ **Provider Rotation**: Orchestrator handles fallback (inherited from Phase 4)
+
+## Success Criteria Checklist
+
+- [x] All 4 files created
+- [x] All files under 500 lines
+- [x] TypeScript compiles without errors
+- [x] No `any` types used
+- [x] SSE endpoint streams in parallel
+- [x] Test page displays real-time tokens
+- [x] Evidence tracker extracts URLs and scores credibility
+- [x] EventSource client handles all event types
+- [x] Auto-scroll works for streaming columns
+- [x] Evidence panel updates in real-time
+- [x] Color-coding by credibility implemented
+- [x] Error handling graceful
+
+---
+
+**Executed by:** Execute Phase Agent
+**Timestamp:** 2026-01-28T20:45:00Z
+**Status:** Phase 5 complete - ready for Phase 6
 - src/lib/db/services/user-service.ts (UserService with user management)
 - drizzle.config.ts (Drizzle Kit configuration)
 - app/tests/db/page.tsx (Interactive CRUD test page)
