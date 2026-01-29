@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { skepticSystemPrompt } from '@/lib/prompts/skeptic';
-import { factCheck, archive } from '@/lib/mcp';
+import { factCheck, archive, braveSearch } from '@/lib/mcp';
 import { AIProviderManager } from '@/lib/utils/ai-provider';
 import { extractEvidenceFromToken } from '@/lib/streaming/sse-handler';
 import type { AgentResponse, AIProvider } from '@/lib/types/agent';
@@ -38,23 +38,34 @@ export class SkepticAgent {
     console.log(`[SKEPTIC]   Max tokens: ${maxTokens}`);
 
     try {
-      // Gather counter-evidence using multiple MCP tools with graceful fallback
-      console.log(`[SKEPTIC] Gathering counter-evidence via MCP tools...`);
+      // Gather counter-evidence using Brave Search + MCP tools
+      console.log(`[SKEPTIC] Gathering counter-evidence...`);
       const toolStart = Date.now();
       
       let counterEvidenceSummary = '';
+      let searchResults: any = { results: [] };
       let factCheckResults: any = { data: [], error: 'Not available' };
-      let domainInfo: any = { data: {}, error: 'Not available' };
       let archiveResults: any = { data: [], error: 'Not available' };
-      let toolsUsed = 0;
 
       try {
-        // Try to gather evidence from MCP tools
-        const [fc, ar] = await Promise.all([
+        // Create a counter-evidence search query
+        // For "X is Y" claims, search for "X is NOT Y" or "X is Z (opposite)"
+        const counterQuery = `NOT (${claim}) OR against ${claim} OR contrary to ${claim}`;
+        
+        console.log(`[SKEPTIC] Searching for counter-evidence...`);
+        const [search, fc, ar] = await Promise.all([
+          braveSearch(counterQuery)
+            .then(result => {
+              console.log(`[SKEPTIC]   ✓ Brave Search succeeded`);
+              return result;
+            })
+            .catch(err => {
+              console.warn(`[SKEPTIC]   ✗ Brave Search failed: ${err instanceof Error ? err.message : 'unknown'}`);
+              return { results: [] };
+            }),
           factCheck(claim)
             .then(result => {
               console.log(`[SKEPTIC]   ✓ factCheck succeeded`);
-              toolsUsed++;
               return result;
             })
             .catch(err => {
@@ -64,7 +75,6 @@ export class SkepticAgent {
           archive(claim)
             .then(result => {
               console.log(`[SKEPTIC]   ✓ archive succeeded`);
-              toolsUsed++;
               return result;
             })
             .catch(err => {
@@ -73,23 +83,21 @@ export class SkepticAgent {
             }),
         ]);
 
+        searchResults = search;
         factCheckResults = fc;
         archiveResults = ar;
-        // Don't use WHOIS - it doesn't apply to claims, only to actual domains in evidence
 
         console.log(`[SKEPTIC] Tools completed in ${Date.now() - toolStart}ms`);
-        console.log(`[SKEPTIC]   Tools successful: ${toolsUsed}/2`);
-        console.log(`[SKEPTIC] 🔍 DEBUG: MCP Tool Results:`);
-        console.log(`[SKEPTIC]   Fact Check - data length: ${factCheckResults.data?.length || 0}, error: ${factCheckResults.error || 'none'}`);
-        if (factCheckResults.data?.length > 0) {
-          console.log(`[SKEPTIC]     First FC item:`, factCheckResults.data[0]);
+        console.log(`[SKEPTIC] 🔍 DEBUG: Counter-Evidence Gathering:`);
+        console.log(`[SKEPTIC]   Brave Search - results count: ${searchResults.results?.length || 0}`);
+        if (searchResults.results?.length > 0) {
+          console.log(`[SKEPTIC]     First search result:`, searchResults.results[0]?.title?.substring(0, 80));
         }
-        console.log(`[SKEPTIC]   Archive - data length: ${archiveResults.data?.length || 0}, error: ${archiveResults.error || 'none'}`);
-        if (archiveResults.data?.length > 0) {
-          console.log(`[SKEPTIC]     First archive item:`, archiveResults.data[0]);
-        }
+        console.log(`[SKEPTIC]   Fact Check - data length: ${factCheckResults.data?.length || 0}`);
+        console.log(`[SKEPTIC]   Archive - data length: ${archiveResults.data?.length || 0}`);
 
         counterEvidenceSummary = this.formatCounterEvidence(
+          searchResults,
           factCheckResults,
           archiveResults
         );
@@ -97,7 +105,7 @@ export class SkepticAgent {
         console.log(`[SKEPTIC]   Counter-evidence summary length: ${counterEvidenceSummary.length} chars`);
       } catch (toolError) {
         const toolErrorMsg = toolError instanceof Error ? toolError.message : String(toolError);
-        console.warn(`[SKEPTIC] MCP tools failed: ${toolErrorMsg}`);
+        console.warn(`[SKEPTIC] Evidence gathering failed: ${toolErrorMsg}`);
         counterEvidenceSummary = 'Limited external evidence available - will rely on logical analysis and general knowledge.';
       }
 
@@ -260,8 +268,18 @@ export class SkepticAgent {
     }
   }
 
-  private formatCounterEvidence(factCheckResults: any, archiveResults: any): string {
+  private formatCounterEvidence(searchResults: any, factCheckResults: any, archiveResults: any): string {
     const parts: string[] = [];
+
+    // Add search results
+    if (searchResults.results?.length > 0) {
+      parts.push(
+        `Research findings:\n${searchResults.results
+          .slice(0, 5)
+          .map((result: any) => `- "${result.title}" (${result.url})`)
+          .join('\n')}`
+      );
+    }
 
     if (factCheckResults.data?.length > 0) {
       parts.push(

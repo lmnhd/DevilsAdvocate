@@ -16,15 +16,31 @@ export interface Evidence {
 
 export function extractEvidenceFromToken(text: string): Evidence[] {
   const evidence: Evidence[] = [];
+  console.log(`[EXTRACT] Starting text extraction with ${text.length} chars`);
+  console.log(`[EXTRACT] First 200 chars: ${text.substring(0, 200)}`);
 
   // Pattern 1: Standard URLs (http/https)
   const urlRegex = /https?:\/\/[^\s<>"{}|\\\^`\[\]]+/gi;
   const urls = text.match(urlRegex) || [];
+  console.log(`[EXTRACT] Pattern 1 (Standard URLs): Found ${urls.length} matches`);
+  if (urls.length > 0) {
+    console.log(`[EXTRACT]   URLs:`, urls.slice(0, 5).map(u => u.substring(0, 60)));
+  }
 
   for (const url of urls) {
     // Skip malformed URLs (query strings, etc.)
-    if (url.includes('%20') || url.length < 10) continue;
-    if (!url.includes('.')) continue; // Must have a TLD
+    if (url.includes('%20')) {
+      console.log(`[EXTRACT]   ✗ Skipping: contains %20`);
+      continue;
+    }
+    if (url.length < 10) {
+      console.log(`[EXTRACT]   ✗ Skipping: too short (${url.length})`);
+      continue;
+    }
+    if (!url.includes('.')) {
+      console.log(`[EXTRACT]   ✗ Skipping: no TLD`);
+      continue;
+    }
 
     // Extract snippet around URL (50 chars before/after)
     const urlIndex = text.indexOf(url);
@@ -34,41 +50,53 @@ export function extractEvidenceFromToken(text: string): Evidence[] {
 
     try {
       const urlObj = new URL(url);
+      console.log(`[EXTRACT]   ✓ Added URL: ${urlObj.hostname}`);
       evidence.push({
         url,
         snippet,
         domain: urlObj.hostname,
         role: 'believer', // Role determined by caller
       });
-    } catch {
-      // Skip URLs that fail to parse
+    } catch (e) {
+      console.log(`[EXTRACT]   ✗ Failed to parse: ${url}`);
     }
   }
 
-  // Pattern 2: Domain mentions (for when LLM cites sources without full URL)
-  const domainMentionRegex = /(?:according to|study by|research from|data from|report by)\s+([a-z0-9-]+(?:\.[a-z]+)+)/gi;
+  // Pattern 2: Plain domain mentions (www.example.com without http://)
+  const domainRegex = /(?:according to|from|at|via|see|check|visit|research from|study by|found at|published by|source:)\s+((?:www\.)?[a-z0-9-]+(?:\.[a-z]+)+)/gi;
+  const domainMatches = [];
   let match;
-  while ((match = domainMentionRegex.exec(text)) !== null) {
-    const domain = match[1];
-    const fullMatch = match[0];
+  while ((match = domainRegex.exec(text)) !== null) {
+    domainMatches.push(match[1]);
+  }
+  console.log(`[EXTRACT] Pattern 2 (Plain domains): Found ${domainMatches.length} matches`);
+  if (domainMatches.length > 0) {
+    console.log(`[EXTRACT]   Domains:`, domainMatches.slice(0, 5));
+  }
 
+  for (const domain of domainMatches) {
     // Convert domain mention to a searchable URL
-    const url = `https://${domain}`;
-    const snippet = fullMatch;
+    const url = `https://${domain.replace('www.', '')}`;
+    const snippet = `Found at ${domain}`;
 
     // Only add if not already present
     if (!evidence.some((e) => e.url.includes(domain))) {
+      console.log(`[EXTRACT]   ✓ Added domain: ${domain}`);
       evidence.push({ url, snippet, domain, role: 'believer' });
     }
   }
 
   // Pattern 3: Academic citations (Author et al., Year)
-  const citationRegex = /([A-Z][a-z]+(?:\s+(?:et al\.|& [A-Z][a-z]+))?,?\s+(?:19|20)\d{2})/g;
+  const citationRegex = /([A-Z][a-z]+(?:\s+(?:et al\.|&\s+[A-Z][a-z]+))?,?\s+(?:19|20)\d{2})/g;
   const citations = text.match(citationRegex) || [];
+  console.log(`[EXTRACT] Pattern 3 (Citations): Found ${citations.length} matches`);
+  if (citations.length > 0) {
+    console.log(`[EXTRACT]   Citations:`, citations.slice(0, 5));
+  }
 
   for (const citation of citations) {
-    // Create a pseudo-URL for academic citations
     const url = `https://scholar.google.com/scholar?q=${encodeURIComponent(citation)}`;
+    console.log(`[EXTRACT]   ✓ Added citation: ${citation}`);
     evidence.push({
       url,
       snippet: `Academic citation: ${citation}`,
@@ -77,6 +105,10 @@ export function extractEvidenceFromToken(text: string): Evidence[] {
     });
   }
 
+  console.log(`[EXTRACT] ========== TOTAL EXTRACTED: ${evidence.length} items ==========`);
+  if (evidence.length === 0) {
+    console.log(`[EXTRACT] Text length: ${text.length}, Text contains http: ${text.includes('http')}, Contains .edu: ${text.includes('.edu')}`);
+  }
   return evidence;
 }
 
