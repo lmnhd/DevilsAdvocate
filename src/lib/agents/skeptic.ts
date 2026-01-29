@@ -49,15 +49,22 @@ export class SkepticAgent {
 
       try {
         // Create a counter-evidence search query
-        // Simple approach: search for "claim" combined with critical terms
-        const counterQuery = `"${claim}" risks concerns ethics`;
+        // Use very simple query - just extract key terms and add critical keywords
+        const claimTerms = claim
+          .split(' ')
+          .filter(word => word.length > 3 && !['should', 'used', 'more', 'than'].includes(word.toLowerCase()))
+          .slice(0, 3)
+          .join(' ');
         
-        console.log(`[SKEPTIC] Searching for counter-evidence with query: "${counterQuery}"`);
+        const counterQuery = `${claimTerms} risks danger concerns problems ethics`;
+        
+        console.log(`[SKEPTIC] Searching for counter-evidence`);
+        console.log(`[SKEPTIC]   Query: "${counterQuery}"`);
         const [search, fc, ar] = await Promise.all([
           braveSearch(counterQuery)
             .then(result => {
-              console.log(`[SKEPTIC]   ✓ Brave Search succeeded`);
-              return result;
+              console.log(`[SKEPTIC]   ✓ Brave Search succeeded (${result.data?.length || 0} results)`);
+              return { results: result.data || [] };
             })
             .catch(err => {
               console.warn(`[SKEPTIC]   ✗ Brave Search failed: ${err instanceof Error ? err.message : 'unknown'}`);
