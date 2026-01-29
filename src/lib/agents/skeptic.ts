@@ -1,8 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { skepticSystemPrompt } from '@/lib/prompts/skeptic';
-import { factCheck, whois, archive } from '@/lib/mcp';
+import { factCheck, archive } from '@/lib/mcp';
 import { AIProviderManager } from '@/lib/utils/ai-provider';
+import { extractEvidenceFromToken } from '@/lib/streaming/sse-handler';
 import type { AgentResponse, AIProvider } from '@/lib/types/agent';
 
 const openai = new OpenAI({
@@ -49,7 +50,7 @@ export class SkepticAgent {
 
       try {
         // Try to gather evidence from MCP tools
-        const [fc, di, ar] = await Promise.all([
+        const [fc, ar] = await Promise.all([
           factCheck(claim)
             .then(result => {
               console.log(`[SKEPTIC]   ✓ factCheck succeeded`);
@@ -59,16 +60,6 @@ export class SkepticAgent {
             .catch(err => {
               console.warn(`[SKEPTIC]   ✗ factCheck failed: ${err instanceof Error ? err.message : 'unknown'}`);
               return { data: [], error: 'Fact check unavailable' };
-            }),
-          whois(this.extractDomain(claim))
-            .then(result => {
-              console.log(`[SKEPTIC]   ✓ whois succeeded`);
-              toolsUsed++;
-              return result;
-            })
-            .catch(err => {
-              console.warn(`[SKEPTIC]   ✗ whois failed: ${err instanceof Error ? err.message : 'unknown'}`);
-              return { data: {}, error: 'WHOIS unavailable' };
             }),
           archive(claim)
             .then(result => {
@@ -83,19 +74,15 @@ export class SkepticAgent {
         ]);
 
         factCheckResults = fc;
-        domainInfo = di;
         archiveResults = ar;
+        // Don't use WHOIS - it doesn't apply to claims, only to actual domains in evidence
 
         console.log(`[SKEPTIC] Tools completed in ${Date.now() - toolStart}ms`);
-        console.log(`[SKEPTIC]   Tools successful: ${toolsUsed}/3`);
+        console.log(`[SKEPTIC]   Tools successful: ${toolsUsed}/2`);
         console.log(`[SKEPTIC] 🔍 DEBUG: MCP Tool Results:`);
         console.log(`[SKEPTIC]   Fact Check - data length: ${factCheckResults.data?.length || 0}, error: ${factCheckResults.error || 'none'}`);
         if (factCheckResults.data?.length > 0) {
           console.log(`[SKEPTIC]     First FC item:`, factCheckResults.data[0]);
-        }
-        console.log(`[SKEPTIC]   WHOIS - has domain: ${!!domainInfo.data?.domain}, error: ${domainInfo.error || 'none'}`);
-        if (domainInfo.data?.domain) {
-          console.log(`[SKEPTIC]     Domain info:`, domainInfo.data);
         }
         console.log(`[SKEPTIC]   Archive - data length: ${archiveResults.data?.length || 0}, error: ${archiveResults.error || 'none'}`);
         if (archiveResults.data?.length > 0) {
@@ -220,24 +207,24 @@ export class SkepticAgent {
           debate_id: '',
           mentioned_by: 'skeptic' as const,
         })),
-        // Domain info as evidence
-        ...(domainInfo.data?.domain ? [{
-          id: `skeptic-whois`,
-          source_url: `https://${domainInfo.data.domain}`,
-          domain: domainInfo.data.domain,
-          snippet: `Domain age: ${domainInfo.data.ageInDays ? Math.floor(domainInfo.data.ageInDays / 365) + ' years' : 'Unknown'}`,
-          credibility_score: domainInfo.data.credibilityScore || 60,
+        // Extract evidence from the response text itself
+        ...extractEvidenceFromToken(content).map((ev: any, idx: number) => ({
+          id: `skeptic-text-${idx}`,
+          source_url: ev.url || '',
+          domain: ev.domain || 'unknown',
+          snippet: ev.snippet || '',
+          credibility_score: 50,
           timestamp: new Date(),
           debate_id: '',
           mentioned_by: 'skeptic' as const,
-        }] : []),
+        })),
       ];
 
       console.log(`[SKEPTIC] 🔍 DEBUG: Building evidence array:`);
       console.log(`[SKEPTIC]   Total evidence items: ${evidenceArray.length}`);
       console.log(`[SKEPTIC]   Fact check items: ${(factCheckResults.data || []).length}`);
       console.log(`[SKEPTIC]   Archive items: ${(archiveResults.data || []).length}`);
-      console.log(`[SKEPTIC]   Domain info items: ${domainInfo.data?.domain ? 1 : 0}`);
+      console.log(`[SKEPTIC]   Text-extracted items: ${extractEvidenceFromToken(content).length}`);
       if (evidenceArray.length > 0) {
         console.log(`[SKEPTIC]   First evidence item:`, evidenceArray[0]);
       }
