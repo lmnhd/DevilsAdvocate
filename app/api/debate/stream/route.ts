@@ -79,6 +79,8 @@ export async function GET(request: NextRequest) {
             } else if (event.type === 'skeptic_complete') {
               skepticResponse = event.data;
               const fullContent = event.data.content;
+              
+              console.log(`[Stream] Skeptic response length: ${fullContent?.length || 0} chars`);
 
               // Extract evidence from full content first
               const allEvidence = extractEvidenceFromToken(fullContent);
@@ -97,6 +99,7 @@ export async function GET(request: NextRequest) {
 
               // Stream skeptic response tokens
               const skepticTokens = fullContent.split(' ');
+              console.log(`[Skeptic] Streaming ${skepticTokens.length} tokens`);
               for (const token of skepticTokens) {
                 const eventData = formatSSE('skeptic_token', { token: token + ' ' });
                 controller.enqueue(encoder.encode(eventData));

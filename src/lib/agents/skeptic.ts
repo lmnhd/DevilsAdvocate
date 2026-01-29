@@ -32,18 +32,29 @@ export class SkepticAgent {
     const { claim, maxTokens = 2500 } = options;
 
     try {
-      // Gather counter-evidence using multiple MCP tools
-      const [factCheckResults, domainInfo, archiveResults] = await Promise.all([
-        factCheck(claim).catch(() => ({ data: [], error: 'Fact check unavailable' })),
-        whois(this.extractDomain(claim)).catch(() => ({ data: {}, error: 'WHOIS unavailable' })),
-        archive(claim).catch(() => ({ data: [], error: 'Archive unavailable' })),
-      ]);
+      // Gather counter-evidence using multiple MCP tools with graceful fallback
+      let counterEvidenceSummary = '';
+      let factCheckResults: any = { data: [], error: 'Not available' };
+      let domainInfo: any = { data: {}, error: 'Not available' };
+      let archiveResults: any = { data: [], error: 'Not available' };
 
-      const counterEvidenceSummary = this.formatCounterEvidence(
-        factCheckResults,
-        domainInfo,
-        archiveResults
-      );
+      try {
+        // Try to gather evidence from MCP tools
+        [factCheckResults, domainInfo, archiveResults] = await Promise.all([
+          factCheck(claim).catch(() => ({ data: [], error: 'Fact check unavailable' })),
+          whois(this.extractDomain(claim)).catch(() => ({ data: {}, error: 'WHOIS unavailable' })),
+          archive(claim).catch(() => ({ data: [], error: 'Archive unavailable' })),
+        ]);
+
+        counterEvidenceSummary = this.formatCounterEvidence(
+          factCheckResults,
+          domainInfo,
+          archiveResults
+        );
+      } catch (toolError) {
+        console.warn('MCP tools failed, using fallback:', toolError);
+        counterEvidenceSummary = 'Limited external evidence available - will rely on logical analysis and general knowledge.';
+      }
 
       // Call Anthropic Claude directly with OpenAI fallback
       let content = '';
@@ -86,6 +97,11 @@ export class SkepticAgent {
         tokensUsed = response.usage?.total_tokens || 0;
       }
 
+      // Ensure content is not empty
+      if (!content || content.trim().length === 0) {
+        throw new Error('Skeptic agent returned empty response');
+      }
+
       return {
         role: 'skeptic',
         content,
@@ -104,6 +120,7 @@ export class SkepticAgent {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[SkepticAgent]', errorMessage);
       throw new Error(`Skeptic agent failed: ${errorMessage}`);
     }
   }
