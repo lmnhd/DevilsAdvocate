@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DebateService } from '@/lib/db/services/debate-service';
-import { getDb } from '@/lib/db/client';
+import { getDb, initDb } from '@/lib/db/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,6 +37,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Initialize database with Cloudflare D1 binding
+    const env = process.env as unknown as { DB: any };
+    if (!env.DB) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
+    }
+    initDb(env.DB);
 
     const db = getDb();
     const debateService = new DebateService(db);
