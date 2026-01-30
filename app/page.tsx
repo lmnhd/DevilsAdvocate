@@ -612,22 +612,20 @@ export default function HomePage() {
                   </Button>
                 </div>
                 <div className="flex gap-3">
+                  <Button
+                    onClick={() => window.location.href = '/tests/debates'}
+                    className="gap-2 bg-[#10B981] hover:bg-[#059669] text-[#FAFAFA]"
+                  >
+                    📚 View Saved Debates
+                  </Button>
                   {!debateState.isStreaming && debateState.believerTokens.length > 0 && (
-                    <>
-                      <Button
-                        onClick={handleSaveDebate}
-                        className="gap-2 bg-[#0EA5E9] hover:bg-[#0284C7] text-[#0A0A0A]"
-                        disabled={!debateState.verdict}
-                      >
-                        💾 Save Debate
-                      </Button>
-                      <Button
-                        onClick={() => window.location.href = '/tests/debates'}
-                        className="gap-2 bg-[#10B981] hover:bg-[#059669] text-[#FAFAFA]"
-                      >
-                        📚 View Saved Debates
-                      </Button>
-                    </>
+                    <Button
+                      onClick={handleSaveDebate}
+                      className="gap-2 bg-[#0EA5E9] hover:bg-[#0284C7] text-[#0A0A0A]"
+                      disabled={!debateState.verdict}
+                    >
+                      💾 Save Debate
+                    </Button>
                   )}
                 </div>
               </div>
