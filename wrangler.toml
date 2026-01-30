@@ -6,7 +6,7 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "devilsadvocate-db"
-database_id = "devilsadvocate-db"
+database_id = "11084c4f-6096-4a06-b2fe-17da879cec31"
 
 # Environment configuration for local development
 [env.development]
