@@ -59,7 +59,7 @@ export class DebateService {
       .limit(limit)
       .offset(offset);
 
-    return results.map(row => ({
+    return results.map((row: typeof debates.$inferSelect) => ({
       ...row,
       evidence_sources: JSON.parse(row.evidence_sources),
       status: row.status as DebateStatus,
