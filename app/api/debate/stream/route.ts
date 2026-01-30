@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DebateOrchestrator } from '@/lib/agents/orchestrator';
 import { EvidenceTracker } from '@/lib/evidence/tracker';
 import { formatSSE, extractEvidenceFromToken } from '@/lib/streaming/sse-handler';
-import { DebateRepository, type EvidenceItem } from '@/lib/db/debate-repository';
 
 // Use nodejs runtime for database access (edge runtime not supported for DynamoDB)
 export const runtime = 'nodejs';
@@ -43,19 +42,6 @@ export async function GET(request: NextRequest) {
 
     const orchestrator = new DebateOrchestrator();
     const tracker = new EvidenceTracker();
-    const debateRepo = new DebateRepository();
-    
-    // Create debate record
-    let debateId: string = '';
-    try {
-      debateId = await debateRepo.createDebate(claim);
-      console.log(`[STREAM] 💾 Debate created with ID: ${debateId}`);
-    } catch (dbError) {
-      console.warn(`[STREAM] ⚠️ Warning: Could not create debate in database:`, 
-        dbError instanceof Error ? dbError.message : 'unknown'
-      );
-      // Don't fail - continue without database persistence
-    }
 
     const encoder = new TextEncoder();
 
@@ -132,18 +118,6 @@ export async function GET(request: NextRequest) {
                 await new Promise((resolve) => setTimeout(resolve, 5));
               }
               
-              // Save believer arguments to database
-              if (debateId) {
-                try {
-                  await debateRepo.updateArguments(debateId, fullContent, '');
-                  console.log(`[STREAM]   💾 Believer argument saved to database`);
-                } catch (dbError) {
-                  console.warn(`[STREAM]   ⚠️ Failed to save believer argument:`, 
-                    dbError instanceof Error ? dbError.message : 'unknown'
-                  );
-                }
-              }
-              
               console.log(`[STREAM]   ✓ Believer complete in ${Date.now() - believerStart}ms\n`);
 
             } else if (event.type === 'skeptic_complete') {
@@ -208,36 +182,6 @@ export async function GET(request: NextRequest) {
                 const eventData = formatSSE('skeptic_token', { token: token + ' ' });
                 controller.enqueue(encoder.encode(eventData));
                 await new Promise((resolve) => setTimeout(resolve, 5));
-              }
-              
-              // Save skeptic argument and evidence to database
-              if (debateId) {
-                try {
-                  const believerEvidence = tracker.getEvidenceByRole('believer').map(e => ({
-                    url: e.url,
-                    domain: e.domain,
-                    snippet: e.snippet,
-                    credibility_score: e.credibility_score,
-                  })) as EvidenceItem[];
-                  
-                  const skepticEvidence = tracker.getEvidenceByRole('skeptic').map(e => ({
-                    url: e.url,
-                    domain: e.domain,
-                    snippet: e.snippet,
-                    credibility_score: e.credibility_score,
-                  })) as EvidenceItem[];
-                  
-                  // Get believer argument (we saved it earlier)
-                  const believerArg = event.data.content; // This is skeptic, we need believer
-                  
-                  await debateRepo.updateArguments(debateId, believerArg, fullContent);
-                  await debateRepo.saveEvidence(debateId, believerEvidence, skepticEvidence);
-                  console.log(`[STREAM]   💾 Skeptic argument and evidence saved to database`);
-                } catch (dbError) {
-                  console.warn(`[STREAM]   ⚠️ Failed to save skeptic data:`, 
-                    dbError instanceof Error ? dbError.message : 'unknown'
-                  );
-                }
               }
               
               console.log(`[STREAM]   ✓ Skeptic complete in ${Date.now() - skepticStart}ms\n`);
@@ -312,25 +256,6 @@ export async function GET(request: NextRequest) {
               console.log(`[STREAM]   Believer strength: ${believerMatch?.[1] || 'PARSE_FAILED'}`);
               console.log(`[STREAM]   Skeptic strength: ${skepticMatch?.[1] || 'PARSE_FAILED'}`);
               console.log(`[STREAM]   Risk assessment: ${riskAssessment}`);
-
-              // Save verdict to database
-              if (debateId) {
-                try {
-                  await debateRepo.saveVerdict(
-                    debateId,
-                    verdictMatch?.[1]?.trim() || 'Unable to determine verdict',
-                    confidence,
-                    believerMatch?.[1] || 'Moderate',
-                    skepticMatch?.[1] || 'Moderate',
-                    riskAssessment
-                  );
-                  console.log(`[STREAM]   💾 Verdict saved to database`);
-                } catch (dbError) {
-                  console.warn(`[STREAM]   ⚠️ Failed to save verdict:`, 
-                    dbError instanceof Error ? dbError.message : 'unknown'
-                  );
-                }
-              }
 
               // Send judge verdict with parsed data
               const judgeEvent = formatSSE('judge_complete', {
