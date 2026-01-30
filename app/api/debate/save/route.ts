@@ -38,16 +38,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Initialize database with Cloudflare D1 binding
-    const env = process.env as unknown as { DB: any };
-    if (!env.DB) {
-      return NextResponse.json(
-        { error: 'Database not configured' },
-        { status: 500 }
-      );
-    }
-    initDb(env.DB);
-
+    // Initialize database (auto-detects environment: Vercel, Cloudflare, or local)
+    initDb();
     const db = getDb();
     const debateService = new DebateService(db);
     const debate = await debateService.createDebate({

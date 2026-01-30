@@ -22,15 +22,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Initialize database with Cloudflare D1 binding
-    const env = process.env as unknown as { DB: any };
-    if (!env.DB) {
-      return NextResponse.json(
-        { error: 'Database not configured' },
-        { status: 500 }
-      );
-    }
-    const db = initDb(env.DB);
+    // Initialize database (auto-detects environment)
+    initDb();
+    const db = getDb();
     const debateService = new DebateService(db);
     const debates = await debateService.listDebates(limit, offset);
 
