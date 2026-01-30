@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DebateService } from '@/lib/db/services/debate-service';
-import { initDb } from '@/lib/db/client';
+import { getDb, initDb } from '@/lib/db/client';
 
 export async function GET(request: NextRequest) {
   try {
