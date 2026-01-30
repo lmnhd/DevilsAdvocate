@@ -21,7 +21,7 @@ export function extractEvidenceFromToken(text: string): Evidence[] {
 
   // Pattern 1: Standard URLs (http/https)
   const urlRegex = /https?:\/\/[^\s<>"{}|\\\^`\[\]]+/gi;
-  const urls = text.match(urlRegex) || [];
+  const urls: string[] = text.match(urlRegex) || [];
   console.log(`[EXTRACT] Pattern 1 (Standard URLs): Found ${urls.length} matches`);
   if (urls.length > 0) {
     console.log(`[EXTRACT]   URLs:`, urls.slice(0, 5).map(u => u.substring(0, 60)));
