@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { DebateRepository } from '@/lib/db/debate-repository';
 
+export const runtime = 'nodejs';
+
 const repository = new DebateRepository();
 
 export async function GET(

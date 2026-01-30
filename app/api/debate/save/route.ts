@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { DebateRepository, type EvidenceItem } from '@/lib/db/debate-repository';
 
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
