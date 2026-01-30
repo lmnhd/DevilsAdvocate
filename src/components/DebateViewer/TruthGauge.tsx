@@ -4,23 +4,53 @@ import { motion } from 'framer-motion';
 
 interface TruthGaugeProps {
   confidence: number; // 0-100
+  verdict: string; // Judge's actual verdict text
   isAnimating: boolean;
 }
 
-export function TruthGauge({ confidence, isAnimating }: TruthGaugeProps) {
+export function TruthGauge({ confidence, verdict, isAnimating }: TruthGaugeProps) {
   // Clamp confidence between 0 and 100
   const clampedConfidence = Math.max(0, Math.min(100, confidence));
 
-  // Determine verdict category and color
+  // Determine category based on VERDICT, not just confidence
   let category = 'Contested';
   let categoryColor = '#FBBF24';
 
-  if (clampedConfidence <= 33) {
-    category = 'False';
-    categoryColor = '#EF4444';
-  } else if (clampedConfidence >= 67) {
-    category = 'True';
-    categoryColor = '#10B981';
+  // Map verdict to gauge display
+  if (verdict.includes('Supported') && !verdict.includes('Unsupported')) {
+    if (clampedConfidence >= 75) {
+      category = 'Supported';
+      categoryColor = '#10B981'; // Green
+    } else if (clampedConfidence >= 50) {
+      category = 'Likely';
+      categoryColor = '#3B82F6'; // Blue
+    } else {
+      category = 'Weak Support';
+      categoryColor = '#FBBF24'; // Yellow
+    }
+  } else if (verdict.includes('Unsupported') || verdict.includes('False')) {
+    if (clampedConfidence >= 75) {
+      category = 'Unsupported';
+      categoryColor = '#EF4444'; // Red
+    } else if (clampedConfidence >= 50) {
+      category = 'Unlikely';
+      categoryColor = '#F97316'; // Orange
+    } else {
+      category = 'Weak Rejection';
+      categoryColor = '#FBBF24'; // Yellow
+    }
+  } else if (verdict.includes('Partially')) {
+    if (clampedConfidence >= 75) {
+      category = 'Partially Supported';
+      categoryColor = '#3B82F6'; // Blue
+    } else {
+      category = 'Mixed Evidence';
+      categoryColor = '#FBBF24'; // Yellow
+    }
+  } else {
+    // Unproven or contested
+    category = 'Contested';
+    categoryColor = '#FBBF24'; // Yellow
   }
 
   // Calculate needle rotation (0-100 maps to 0-180 degrees)

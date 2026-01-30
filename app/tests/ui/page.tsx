@@ -252,6 +252,7 @@ export default function UITestPage() {
             {(debateState.confidence !== null || debateState.isStreaming) && (
               <TruthGauge
                 confidence={debateState.confidence || 50}
+                verdict={debateState.verdict || 'Unproven'}
                 isAnimating={debateState.isStreaming}
               />
             )}

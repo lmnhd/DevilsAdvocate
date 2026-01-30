@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { DebateInput } from '@/components/DebateViewer/DebateInput';
 import { ArgumentColumn } from '@/components/DebateViewer/ArgumentColumn';
-import { TruthGauge } from '@/components/DebateViewer/TruthGauge';
 import { JudgeVerdict } from '@/components/DebateViewer/JudgeVerdict';
 import { EvidencePanel } from '@/components/DebateViewer/EvidencePanel';
 import { TrackedEvidence } from '@/lib/evidence/tracker';
@@ -76,12 +75,21 @@ export default function HomePage() {
 
   const [error, setError] = useState<string | null>(null);
   const [selectedClaim, setSelectedClaim] = useState<string>('');
+  const [currentClaim, setCurrentClaim] = useState<string>('');
+  const [activeClaim, setActiveClaim] = useState<string>('');
   const [believerModel, setBelieverModel] = useState('gpt-4o');
   const [skepticModel, setSkepticModel] = useState('claude-3-5-sonnet-20241022');
   const [judgeModel, setJudgeModel] = useState('gpt-4o');
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const handleDebateStart = async (claim: string, length: 'short' | 'medium' | 'long') => {
+    // Close any existing EventSource
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    setActiveClaim(claim);
     setError(null);
     setDebateState({
       believerTokens: [],
@@ -236,6 +244,30 @@ export default function HomePage() {
     }));
   };
 
+  const handleNewDebate = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    setDebateState({
+      believerTokens: [],
+      skepticTokens: [],
+      isStreaming: false,
+      evidence: [],
+      verdict: null,
+      confidence: null,
+      riskAssessment: null,
+      debateId: null,
+      harmIfWrong: null,
+      opportunityIfWrong: null,
+      keyFactors: [],
+      criticalGaps: null,
+    });
+    setActiveClaim('');
+    setSelectedClaim('');
+    setCurrentClaim('');
+  };
+
   const handleQuickDebate = (claim: string) => {
     setSelectedClaim(claim);
   };
@@ -291,14 +323,14 @@ export default function HomePage() {
       <Card className="w-full  bg-linear-to-b from-[#171717] to-[#0A0A0A] border-b border-[#404040] py-6 px-6">
         <div className="max-w-6xl mx-auto">
           <h1 
-          className="text-3xl md:text-6xl font-bold text-[#FAFAFA] mb-4 tracking-tight"
+          className="text-2xl md:text-3xl font-bold text-[#FAFAFA] mb-4 tracking-tight"
           >
             Devil's Advocate
           </h1>
-          <p className="text-xl ml-auto md:text-2xl text-[#A3A3A3] leading-relaxed max-w-3xl font-light mb-4">
+          <p className="text-lg ml-auto md:text-xl text-[#A3A3A3] leading-relaxed max-w-3xl font-light mb-4">
             Multi-agent fact-checking with real-time dual-perspective debate analysis
           </p>
-          <p className="text-md text-pink-700 p-2 rounded-2xl opacity-80 ml-auto bg-linear-30 from-slate-900 to-55% text-[#dac6c6] max-w-3xl leading-relaxed">
+          <p className="text-sm text-pink-700 p-2 rounded-2xl opacity-80 mx-auto bg-linear-30 from-slate-900 to-55% text-[#dac6c6] max-w-3xl leading-relaxed">
             Watch AI agents argue opposing viewpoints on any claim, with real-time evidence tracking and credibility scoring.
           </p>
         </div>
@@ -316,122 +348,177 @@ export default function HomePage() {
             </Card>
           )}
 
-          {/* Configuration Cards */}
-          <div className="flex flex-wrap gap-4 mb-10">
-            {/* Input Card */}
-            <Card className="flex-1 min-w-full border-[#404040] bg-[#171717]">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-[#FAFAFA] mb-4">Enter Your Claim</h2>
+          {/* INITIAL STATE: Claims + Model Selection */}
+          {!debateState.isStreaming && debateState.believerTokens.length === 0 && (
+            <>
+              {/* Claim Input Section */}
+              <div className="mb-6">
                 <DebateInput 
                   onSubmit={handleDebateStart} 
                   isLoading={debateState.isStreaming}
                   externalClaim={selectedClaim}
+                  onClaimChange={setCurrentClaim}
                 />
               </div>
-            </Card>
 
-            {/* Model Selection Panel */}
-            <Card className="flex-1 min-w-full border-[#404040] bg-[#171717]">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-[#FAFAFA] mb-4">🤖 AI Model Configuration</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Believer Model */}
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm font-medium text-[#0EA5E9]">
-                      <span className="text-lg">✓</span>
-                      Believer
-                    </label>
-                    <select
-                      value={believerModel}
-                      onChange={(e) => setBelieverModel(e.target.value)}
-                      disabled={debateState.isStreaming}
-                      className="w-full px-3 py-2 bg-[#262626] border border-[#404040] rounded-lg text-[#E5E5E5] text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] disabled:opacity-50"
-                    >
-                      <optgroup label="OpenAI">
-                        {OPENAI_MODELS.map(model => (
-                          <option key={model.id} value={model.id}>
-                            {model.name} - {model.description}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Anthropic">
-                        {ANTHROPIC_MODELS.map(model => (
-                          <option key={model.id} value={model.id}>
-                            {model.name} - {model.description}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-                  </div>
+              {/* Two-Column Layout: Start Button + Model Selectors (30% smaller) */}
+              <div className="flex gap-6 mb-10 max-w-2xl mx-auto">
+                {/* Left: Start Debate Button */}
+                <Card className="flex-1 border-[#404040] bg-[#171717] flex items-stretch">
+                  <button
+                    onClick={() => {
+                      const claim = currentClaim || selectedClaim || '';
+                      if (claim.length >= 10 && claim.length <= 500) {
+                        handleDebateStart(claim, 'medium');
+                      }
+                    }}
+                    disabled={debateState.isStreaming || (!currentClaim && !selectedClaim) || (currentClaim || selectedClaim || '').length < 10}
+                    className="w-full flex flex-col items-center justify-center gap-3 px-8 py-8 hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="text-4xl">▶</div>
+                    <span className="text-lg font-semibold text-[#FAFAFA]">
+                      {debateState.isStreaming ? 'Debate in Progress...' : 'Start Debate'}
+                    </span>
+                    <span className="text-xs text-[#737373]">Enter claim above to begin</span>
+                  </button>
+                </Card>
 
-                  {/* Skeptic Model */}
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm font-medium text-[#EF4444]">
-                      <span className="text-lg">✗</span>
-                      Skeptic
-                    </label>
-                    <select
-                      value={skepticModel}
-                      onChange={(e) => setSkepticModel(e.target.value)}
-                      disabled={debateState.isStreaming}
-                      className="w-full px-3 py-2 bg-[#262626] border border-[#404040] rounded-lg text-[#E5E5E5] text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] disabled:opacity-50"
-                    >
-                      <optgroup label="Anthropic">
-                        {ANTHROPIC_MODELS.map(model => (
-                          <option key={model.id} value={model.id}>
-                            {model.name} - {model.description}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="OpenAI">
-                        {OPENAI_MODELS.map(model => (
-                          <option key={model.id} value={model.id}>
-                            {model.name} - {model.description}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-                  </div>
+                {/* Right: Model Selectors Card */}
+                <Card className="flex-1 border-[#404040] bg-[#171717] p-5">
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-[#FAFAFA] uppercase tracking-tight">AI Models</h3>
+                    
+                    {/* Believer Model */}
+                    <div className="space-y-1.5">
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-[#0EA5E9] uppercase tracking-tight">
+                        <span>✓</span>
+                        Believer
+                      </label>
+                      <select
+                        value={believerModel}
+                        onChange={(e) => setBelieverModel(e.target.value)}
+                        disabled={debateState.isStreaming}
+                        className="w-full px-2.5 py-1.5 bg-[#262626] border border-[#404040] rounded-md text-[#E5E5E5] text-xs focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] disabled:opacity-50"
+                      >
+                        <optgroup label="OpenAI">
+                          {OPENAI_MODELS.map(model => (
+                            <option key={model.id} value={model.id}>
+                              {model.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Anthropic">
+                          {ANTHROPIC_MODELS.map(model => (
+                            <option key={model.id} value={model.id}>
+                              {model.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </div>
 
-                  {/* Judge Model */}
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm font-medium text-[#8B5CF6]">
-                      <span className="text-lg">⚖️</span>
-                      Judge
-                    </label>
-                    <select
-                      value={judgeModel}
-                      onChange={(e) => setJudgeModel(e.target.value)}
-                      disabled={debateState.isStreaming}
-                      className="w-full px-3 py-2 bg-[#262626] border border-[#404040] rounded-lg text-[#E5E5E5] text-sm focus:outline-none focus:ring-2 focus:ring-[#8B5CF6] disabled:opacity-50"
-                    >
-                      <optgroup label="OpenAI">
-                        {OPENAI_MODELS.map(model => (
-                          <option key={model.id} value={model.id}>
-                            {model.name} - {model.description}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Anthropic">
-                        {ANTHROPIC_MODELS.map(model => (
-                          <option key={model.id} value={model.id}>
-                            {model.name} - {model.description}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
+                    {/* Skeptic Model */}
+                    <div className="space-y-1.5">
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-[#EF4444] uppercase tracking-tight">
+                        <span>✗</span>
+                        Skeptic
+                      </label>
+                      <select
+                        value={skepticModel}
+                        onChange={(e) => setSkepticModel(e.target.value)}
+                        disabled={debateState.isStreaming}
+                        className="w-full px-2.5 py-1.5 bg-[#262626] border border-[#404040] rounded-md text-[#E5E5E5] text-xs focus:outline-none focus:ring-2 focus:ring-[#EF4444] disabled:opacity-50"
+                      >
+                        <optgroup label="Anthropic">
+                          {ANTHROPIC_MODELS.map(model => (
+                            <option key={model.id} value={model.id}>
+                              {model.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="OpenAI">
+                          {OPENAI_MODELS.map(model => (
+                            <option key={model.id} value={model.id}>
+                              {model.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    {/* Judge Model */}
+                    <div className="space-y-1.5">
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-[#8B5CF6] uppercase tracking-tight">
+                        <span>⚖️</span>
+                        Judge
+                      </label>
+                      <select
+                        value={judgeModel}
+                        onChange={(e) => setJudgeModel(e.target.value)}
+                        disabled={debateState.isStreaming}
+                        className="w-full px-2.5 py-1.5 bg-[#262626] border border-[#404040] rounded-md text-[#E5E5E5] text-xs focus:outline-none focus:ring-2 focus:ring-[#8B5CF6] disabled:opacity-50"
+                      >
+                        <optgroup label="OpenAI">
+                          {OPENAI_MODELS.map(model => (
+                            <option key={model.id} value={model.id}>
+                              {model.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Anthropic">
+                          {ANTHROPIC_MODELS.map(model => (
+                            <option key={model.id} value={model.id}>
+                              {model.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    <p className="text-xs text-[#737373] pt-1">
+                      💡 Mix for diverse perspectives
+                    </p>
                   </div>
-                </div>
-                <p className="text-xs text-[#737373] mt-3">
-                  💡 Tip: Mix different models for diverse perspectives and reasoning styles
-                </p>
+                </Card>
               </div>
-            </Card>
-          </div>
 
-          {/* Main Debate Content - Wrapping Cards */}
+              {/* Quick Start Examples - Only show in initial state */}
+              <div className="mt-12">
+                <h2 className="text-lg font-bold text-[#FAFAFA] mb-6 text-center uppercase tracking-wide">⚡ Quick Start Examples</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+                  {SAMPLE_CLAIMS.map((example, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleQuickDebate(example.text)}
+                      disabled={debateState.isStreaming}
+                      className={`relative overflow-hidden rounded-xl w-full h-48 shadow-md transition-all duration-200 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border border-black/10 ${example.classes}`}
+                    >
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4">
+                        <span className="text-5xl">{example.emoji}</span>
+                        <p className="text-xs font-bold leading-tight text-center px-2">
+                          {example.text}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* DEBATE STATE: Processing + Results */}
           {(debateState.isStreaming || debateState.believerTokens.length > 0) && (
             <div className="space-y-8">
+              {/* Active Debate Claim Header */}
+              <Card className="border-[#404040] bg-[#171717]/80 p-6 mb-6">
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl">🎯</div>
+                  <div className="flex-1">
+                    <h2 className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-2">Active Debate Topic</h2>
+                    <p className="text-lg font-semibold text-[#FAFAFA] leading-relaxed">{activeClaim}</p>
+                  </div>
+                </div>
+              </Card>
               {/* Judge Verdict or Streaming Placeholder - Fixed at Top */}
               {debateState.verdict && debateState.confidence !== null ? (
                 <div className="bg-[#171717] border border-[#404040] rounded-lg p-6">
@@ -503,15 +590,23 @@ export default function HomePage() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3 justify-between border-t border-[#404040] pt-6">
-                <Button
-                  onClick={handleStopDebate}
-                  disabled={!debateState.isStreaming}
-                  variant="destructive"
-                  className="gap-2"
-                >
-                  <Square className="w-4 h-4" />
-                  Stop Debate
-                </Button>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleStopDebate}
+                    disabled={!debateState.isStreaming}
+                    variant="destructive"
+                    className="gap-2"
+                  >
+                    <Square className="w-4 h-4" />
+                    Stop Debate
+                  </Button>
+                  <Button
+                    onClick={handleNewDebate}
+                    className="gap-2 bg-[#8B5CF6] hover:bg-[#7C3AED] text-[#FAFAFA]"
+                  >
+                    ← New Debate
+                  </Button>
+                </div>
                 <div className="flex gap-3">
                   {!debateState.isStreaming && debateState.believerTokens.length > 0 && (
                     <>
@@ -537,43 +632,6 @@ export default function HomePage() {
               </div>
             </div>
           )}
-
-          {/* Empty State */}
-          {!debateState.isStreaming && debateState.believerTokens.length === 0 && (
-            <Card className="border-[#404040]/50 bg-[#171717]/50 mb-8">
-              <div className="py-16 px-6 text-center">
-                <p className="text-sm text-[#737373]">
-                  Enter a claim above or select a quick example to begin a live debate
-                </p>
-              </div>
-            </Card>
-          )}
-
-          {/* Quick Start Examples - Colored Squares */}
-          <div className="mt-8">
-            <h2 className="text-lg font-bold text-[#FAFAFA] mb-6 text-center uppercase tracking-wide">⚡ Quick Start Examples</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-              {SAMPLE_CLAIMS.map((example, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleQuickDebate(example.text)}
-                  disabled={debateState.isStreaming}
-                  className={`relative overflow-hidden rounded-xl w-full h-48 shadow-md transition-all duration-200 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border border-black/10 ${example.classes}`}
-                >
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4">
-                    <span className="text-5xl">{example.emoji}</span>
-                    <p className="text-xs font-bold leading-tight text-center px-2">
-                      {example.text}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-         
-
-          
         </div>
       </div>
     </main>

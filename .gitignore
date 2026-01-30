@@ -31,3 +31,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# CDK
+cdk/node_modules/
+cdk/dist/
+cdk/.parcel-cache
+
+# AWS CDK asset staging directory
+.cdk.staging/
+cdk.out/

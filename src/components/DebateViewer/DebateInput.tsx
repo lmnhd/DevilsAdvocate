@@ -66,7 +66,10 @@ export function DebateInput({ onSubmit, isLoading, externalClaim, onClaimChange 
               <textarea
                 id="claim"
                 value={claim}
-                onChange={(e) => setClaim(e.target.value)}
+                onChange={(e) => {
+                  setClaim(e.target.value);
+                  onClaimChange?.(e.target.value);
+                }}
                 placeholder="Enter a claim to debate..."
                 disabled={isLoading}
                 rows={6}
@@ -105,16 +108,6 @@ export function DebateInput({ onSubmit, isLoading, externalClaim, onClaimChange 
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="w-full">
-          <Button
-            type="submit"
-            disabled={isLoading || !isValid}
-            className="w-1/3 right-1/2 mx-auto border-2 border-black px-6 py-3 bg-accent text-foreground-primary font-semibold rounded-lg hover:bg-accent hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Debate in Progress...' : 'Start Debate'}
-          </Button>
         </div>
       </form>
     </div>
